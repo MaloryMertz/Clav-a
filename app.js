@@ -1191,6 +1191,7 @@ optKeySize.addEventListener('input', () => {
   uiPrefs.keySize = Number(optKeySize.value);
   saveUiPrefs();
   document.documentElement.style.setProperty('--key-zoom', uiPrefs.keySize / 100);
+  updatePanBar(); // le débordement horizontal a changé
 });
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });
@@ -1389,6 +1390,28 @@ function fxLoop(ts) {
   if (fxParticles.length) requestAnimationFrame(fxLoop);
   else { fxRunning = false; fxCtx.clearRect(0, 0, r.width, r.height); }
 }
+
+/* ---------- Ascenseur horizontal du clavier ---------- */
+const panBar = document.getElementById('panBar');
+const pianoScroll = document.getElementById('pianoScroll');
+
+function updatePanBar() {
+  const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;
+  panBar.hidden = overflow <= 4;
+  if (!panBar.hidden) panBar.value = Math.round(pianoScroll.scrollLeft / overflow * 100);
+}
+panBar.addEventListener('input', () => {
+  const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;
+  pianoScroll.scrollLeft = panBar.value / 100 * overflow;
+});
+pianoScroll.addEventListener('scroll', () => {
+  if (!panBar.matches(':active')) updatePanBar();
+}, { passive: true });
+new ResizeObserver(updatePanBar).observe(pianoScroll);
+window.addEventListener('resize', updatePanBar);
+/* au démarrage : clavier centré (le Do central au milieu) */
+pianoScroll.scrollLeft = (pianoScroll.scrollWidth - pianoScroll.clientWidth) / 2;
+updatePanBar();
 
 /* ---------- Téléphone : incitation paysage + verrouillage d'orientation ---------- */
 const rotateHint = document.getElementById('rotateHint');
