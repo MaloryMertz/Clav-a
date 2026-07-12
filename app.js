@@ -1144,10 +1144,13 @@ const optFx = document.getElementById('optFx');
 const optHint = document.getElementById('optHint');
 const optSig = document.getElementById('optSig');
 const optReverb = document.getElementById('optReverb');
+const optKeysOnly = document.getElementById('optKeysOnly');
+const optKeySize = document.getElementById('optKeySize');
+const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, reverb: 25 };
+let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, reverb: 25, keysOnly: false, keySize: 100 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
@@ -1164,8 +1167,31 @@ function applyUiPrefs() {
   optFx.checked = uiPrefs.fx;
   optReverb.value = uiPrefs.reverb;
   setReverb(uiPrefs.reverb);
+  optKeysOnly.checked = uiPrefs.keysOnly;
+  document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
+  keysOnlyExit.hidden = !uiPrefs.keysOnly;
+  optKeySize.value = uiPrefs.keySize;
+  document.documentElement.style.setProperty('--key-zoom', uiPrefs.keySize / 100);
 }
 applyUiPrefs();
+
+/* ---------- Mode touches seules + taille des touches ---------- */
+optKeysOnly.addEventListener('change', () => {
+  uiPrefs.keysOnly = optKeysOnly.checked;
+  saveUiPrefs();
+  applyUiPrefs();
+  if (uiPrefs.keysOnly) { settingsPop.hidden = true; btnSettings.setAttribute('aria-expanded', 'false'); }
+});
+keysOnlyExit.addEventListener('click', () => {
+  uiPrefs.keysOnly = false;
+  saveUiPrefs();
+  applyUiPrefs();
+});
+optKeySize.addEventListener('input', () => {
+  uiPrefs.keySize = Number(optKeySize.value);
+  saveUiPrefs();
+  document.documentElement.style.setProperty('--key-zoom', uiPrefs.keySize / 100);
+});
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });
 
@@ -1363,6 +1389,32 @@ function fxLoop(ts) {
   if (fxParticles.length) requestAnimationFrame(fxLoop);
   else { fxRunning = false; fxCtx.clearRect(0, 0, r.width, r.height); }
 }
+
+/* ---------- Téléphone : incitation paysage + verrouillage d'orientation ---------- */
+const rotateHint = document.getElementById('rotateHint');
+const rotateFs = document.getElementById('rotateFs');
+const rotateDismiss = document.getElementById('rotateDismiss');
+const isPhone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 800;
+
+function updateRotateHint() {
+  const portrait = window.innerHeight > window.innerWidth;
+  rotateHint.hidden = !(isPhone && portrait && !sessionStorage.getItem('piano.rotateDismissed'));
+}
+rotateDismiss.addEventListener('click', () => {
+  sessionStorage.setItem('piano.rotateDismissed', '1');
+  updateRotateHint();
+});
+rotateFs.addEventListener('click', async () => {
+  try {
+    await document.documentElement.requestFullscreen();
+    // Android : verrouille en paysage ; iOS ne le permet pas (tourner l'appareil suffit)
+    await screen.orientation?.lock?.('landscape');
+  } catch (_) { /* verrouillage refusé (iOS/desktop) : l'utilisateur tourne l'appareil */ }
+  sessionStorage.setItem('piano.rotateDismissed', '1');
+  updateRotateHint();
+});
+window.addEventListener('resize', updateRotateHint);
+updateRotateHint();
 
 /* ---------- PWA : service worker + indicateur hors-ligne ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
