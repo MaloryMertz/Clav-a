@@ -914,8 +914,12 @@ function midiToSheet({ notes, tempos, division }) {
 }
 
 async function importMidiFile(file) {
+  return importMidiBuffer(await file.arrayBuffer());
+}
+
+function importMidiBuffer(buf) {
   try {
-    const result = midiToSheet(parseMidi(await file.arrayBuffer()));
+    const result = midiToSheet(parseMidi(buf));
     if (!result) { sheetProgress.textContent = 'Aucune note exploitable dans ce fichier MIDI.'; return; }
     stopAuto(false);
     stopSheet(false);
@@ -932,6 +936,67 @@ async function importMidiFile(file) {
     sheetProgress.textContent = `Import MIDI impossible : ${err.message}`;
   }
 }
+
+/* ---------- Recherche de MIDI en ligne (API BitMidi) ---------- */
+const midiQuery = document.getElementById('midiQuery');
+const midiSearchBtn = document.getElementById('midiSearchBtn');
+const midiResults = document.getElementById('midiResults');
+
+function escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function searchMidi() {
+  const q = midiQuery.value.trim();
+  if (!q) return;
+  midiResults.hidden = false;
+  midiResults.innerHTML = '<p class="mr-info">Recherche…</p>';
+  try {
+    const res = await fetchWithTimeoutSafe(`https://bitmidi.com/api/midi/search?q=${encodeURIComponent(q)}&page=0`);
+    const items = (await res.json()).result?.results || [];
+    if (!items.length) {
+      midiResults.innerHTML = '<p class="mr-info">Aucun résultat pour cette recherche.</p>';
+      return;
+    }
+    midiResults.innerHTML = '';
+    for (const it of items.slice(0, 12)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mr-item';
+      b.innerHTML = `<span>${escHtml(it.name)}</span><small>${(it.plays || 0).toLocaleString('fr-FR')} lectures</small>`;
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        sheetProgress.classList.remove('done');
+        sheetProgress.textContent = `Téléchargement de « ${it.name} »…`;
+        try {
+          const buf = await (await fetchWithTimeoutSafe('https://bitmidi.com' + it.downloadUrl)).arrayBuffer();
+          importMidiBuffer(buf);
+          midiResults.hidden = true;
+        } catch (err) {
+          sheetProgress.textContent = `Téléchargement impossible : ${err.message}`;
+        }
+        b.disabled = false;
+      });
+      midiResults.appendChild(b);
+    }
+  } catch (_) {
+    midiResults.innerHTML = '<p class="mr-info">Recherche impossible — vérifiez la connexion (BitMidi requiert le réseau).</p>';
+  }
+}
+
+function fetchWithTimeoutSafe(url, ms = 15000) {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal }).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r;
+  });
+}
+
+midiSearchBtn.addEventListener('click', searchMidi);
+midiQuery.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); searchMidi(); }
+});
 
 midiImport.addEventListener('click', () => midiFile.click());
 midiFile.addEventListener('change', () => {
@@ -1086,7 +1151,7 @@ document.addEventListener('pointerdown', e => {
    reste entièrement dédié au piano (Espace = pédale, jamais un bouton). */
 [btnSustain, btnLabels, volumeEl, trDown, trUp, trVal, btnSheet,
  sheetStart, sheetStop, autoStart, autoPause, tempoEl, tempoDown, tempoUp,
- recBtn, shareBtn, libSave, libDelete, libExport, libImport, midiImport, sheetMax, ...dockButtons].forEach(el =>
+ recBtn, shareBtn, libSave, libDelete, libExport, libImport, midiImport, midiSearchBtn, sheetMax, ...dockButtons].forEach(el =>
   el.addEventListener('pointerup', () => el.blur())
 );
 

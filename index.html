@@ -123,6 +123,12 @@
           </svg>
         </button>
       </div>
+      <div class="midi-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="midiQuery" type="search" placeholder="Rechercher un fichier MIDI en ligne (BitMidi)…" aria-label="Rechercher un fichier MIDI en ligne">
+        <button id="midiSearchBtn" class="ctl-btn sm2" type="button">Rechercher</button>
+      </div>
+      <div class="midi-results" id="midiResults" hidden></div>
       <textarea id="sheetInput" rows="3" spellcheck="false"
         placeholder="Collez une partition ici — ex. : 8 t u [8t] o — accords entre [ ], vitesse locale avec {x2} {x0.5} {x1}"></textarea>
       <div class="sheet-actions">
