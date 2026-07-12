@@ -1251,10 +1251,26 @@ optSheet.addEventListener('change', () => setSheetVisible(optSheet.checked));
 optHint.addEventListener('change', () => { uiPrefs.hint = optHint.checked; saveUiPrefs(); applyUiPrefs(); });
 optSig.addEventListener('change', () => { uiPrefs.sig = optSig.checked; saveUiPrefs(); applyUiPrefs(); });
 
+/* Indicateur « défiler pour voir la suite » du popover réglages :
+   une sentinelle invisible en bas du contenu ; tant qu'elle n'est pas
+   visible dans le popover, on affiche le chevron. */
+const spEnd = document.createElement('div');
+spEnd.style.cssText = 'height:1px;flex-shrink:0;';
+settingsPop.insertBefore(spEnd, settingsPop.querySelector('.sp-more'));
+
+function refreshScrollHint() {
+  const scrollable = settingsPop.scrollHeight > settingsPop.clientHeight + 4;
+  const endVisible = spEnd.getBoundingClientRect().top < settingsPop.getBoundingClientRect().bottom - 4;
+  settingsPop.classList.toggle('scroll-hint', scrollable && !endVisible);
+}
+new IntersectionObserver(refreshScrollHint, { root: settingsPop, threshold: [0, 1] }).observe(spEnd);
+settingsPop.addEventListener('scroll', refreshScrollHint, { passive: true });
+
 btnSettings.addEventListener('click', () => {
   const open = settingsPop.hidden;
   settingsPop.hidden = !open;
   btnSettings.setAttribute('aria-expanded', String(open));
+  if (open) { settingsPop.scrollTop = 0; setTimeout(refreshScrollHint, 30); }
 });
 document.addEventListener('pointerdown', e => {
   if (!settingsPop.hidden && !e.target.closest('.settings-wrap')) {

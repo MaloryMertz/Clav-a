@@ -193,6 +193,29 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
 }
+/* Indicateur « il y a plus de réglages en bas » */
+.sp-more {
+  display: none;
+  position: sticky;
+  bottom: -14px;
+  margin: -10px -16px -14px;
+  padding: 22px 0 6px;
+  justify-content: center;
+  background: linear-gradient(180deg, transparent, var(--surface) 60%);
+  pointer-events: none;
+}
+.sp-more svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  animation: sp-bounce 1.4s ease-in-out infinite;
+}
+@keyframes sp-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+.settings-pop.scroll-hint .sp-more { display: flex; }
+
 .sp-reset {
   display: inline-flex;
   align-items: center;
@@ -760,11 +783,14 @@ body.css-landscape.keys-only .piano { height: calc(100dvw - 74px); }
     right: auto;
     transform: translate(-50%, -50%);
     width: min(340px, 92%);
-    max-height: 86%;
+    max-height: 88%;
     overflow-y: auto;
     z-index: 200;
+    gap: 7px;
+    padding: 12px 16px 14px;
     box-shadow: 0 24px 70px rgba(0, 0, 0, .85), 0 0 0 100vmax rgba(0, 0, 0, .45);
   }
+  .settings-pop label { min-height: 24px; }
 }
 
 /* ===== Paysage forcé par rotation CSS (iPhone & verrouillage refusé) ===== */
