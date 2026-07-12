@@ -11,7 +11,8 @@ Piano virtuel 61 touches (C2 → C7) dans le navigateur, avec le **mapping clavi
 - **Web MIDI** : branchez un clavier maître, il est détecté automatiquement (badge MIDI).
 - **Souris / tactile** : clic ou toucher multi-doigts, glissando en glissant sur les touches, vélocité selon la hauteur du clic sur la touche.
 - **Étiquettes** : affichage des touches clavier (mapping VP), des noms de notes (C4…), ou rien.
-- **PWA hors-ligne** : après une première visite en ligne, tout (page + samples, ~1,3 Mo) est mis en cache par le service worker — l'app fonctionne ensuite sans réseau et est installable.
+- **Import MIDI** : bouton `MIDI` (ou glisser-déposer un `.mid` sur le panneau) — parsing du fichier en pur JS, quantification sur la grille du morceau, accords, transposition automatique dans la plage C2–C7 et vitesse de lecture réglée d'après le tempo du fichier.
+- **PWA hors-ligne** : après une première visite en ligne, tout (page + samples, ~1,8 Mo) est mis en cache par le service worker — l'app fonctionne ensuite sans réseau et est installable.
 
 ## Lancer en local
 

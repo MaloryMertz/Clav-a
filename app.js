@@ -781,6 +781,145 @@ recBtn.addEventListener('click', () => {
   }
 });
 
+/* ---------- Import MIDI (.mid / .midi) ---------- */
+const midiImport = document.getElementById('midiImport');
+const midiFile = document.getElementById('midiFile');
+
+/* Parseur Standard MIDI File (formats 0 et 1, division TPQN) */
+function parseMidi(buf) {
+  const d = new DataView(buf);
+  let pos = 0;
+  const str = n => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(pos++)); return s; };
+  const u32 = () => { const v = d.getUint32(pos); pos += 4; return v; };
+  const u16 = () => { const v = d.getUint16(pos); pos += 2; return v; };
+  const u8 = () => d.getUint8(pos++);
+  const vlq = () => { let v = 0, b; do { b = u8(); v = (v << 7) | (b & 0x7f); } while (b & 0x80); return v; };
+
+  if (str(4) !== 'MThd') throw new Error('ce n’est pas un fichier MIDI');
+  const hlen = u32();
+  u16(); // format
+  const ntrk = u16();
+  const division = u16();
+  if (division & 0x8000) throw new Error('division SMPTE non gérée');
+  pos += hlen - 6;
+
+  const notes = [];
+  const tempos = [{ tick: 0, us: 500000 }];
+  for (let t = 0; t < ntrk; t++) {
+    if (str(4) !== 'MTrk') throw new Error('piste invalide');
+    const end = pos + u32();
+    let tick = 0;
+    let status = 0;
+    while (pos < end) {
+      tick += vlq();
+      let b = u8();
+      if (b < 0x80) { pos--; b = status; } else if (b < 0xf0) status = b;
+      const type = b & 0xf0;
+      const ch = b & 0x0f;
+      if (type === 0x90) {
+        const note = u8(), vel = u8();
+        if (vel > 0 && ch !== 9) notes.push({ tick, midi: note }); // canal 10 = percussions, ignoré
+      } else if (type === 0x80 || type === 0xa0 || type === 0xb0 || type === 0xe0) {
+        pos += 2;
+      } else if (type === 0xc0 || type === 0xd0) {
+        pos += 1;
+      } else if (b === 0xff) {
+        const meta = u8(), len = vlq();
+        if (meta === 0x51 && len === 3) tempos.push({ tick, us: (u8() << 16) | (u8() << 8) | u8() });
+        else pos += len;
+      } else if (b === 0xf0 || b === 0xf7) {
+        pos += vlq();
+      } else {
+        throw new Error('événement inattendu');
+      }
+    }
+    pos = end;
+  }
+  notes.sort((a, b) => a.tick - b.tick);
+  tempos.sort((a, b) => a.tick - b.tick);
+  return { notes, tempos, division };
+}
+
+/* Transposition d'octaves qui garde le maximum de notes dans C2–C7 */
+function bestOctaveShift(notes) {
+  let best = 0, bestCount = -1;
+  for (let s = -36; s <= 36; s += 12) {
+    const c = notes.reduce((a, n) => a + (n.midi + s >= FIRST_MIDI && n.midi + s <= LAST_MIDI ? 1 : 0), 0);
+    if (c > bestCount) { bestCount = c; best = s; }
+  }
+  return best;
+}
+
+function midiToSheet({ notes, tempos, division }) {
+  if (!notes.length) return null;
+  // grille : croche par défaut, double-croche si le fichier est plus fin
+  const quantErr = s => notes.reduce((a, n) => a + Math.abs(n.tick - Math.round(n.tick / s) * s), 0) / notes.length;
+  let step = division / 2;
+  if (quantErr(step) > division / 8) step = division / 4;
+
+  const shift = bestOctaveShift(notes);
+  const slotMap = new Map();
+  let dropped = 0;
+  for (const n of notes) {
+    const m = n.midi + shift;
+    if (m < FIRST_MIDI || m > LAST_MIDI) { dropped++; continue; }
+    const slot = Math.round(n.tick / step);
+    if (!slotMap.has(slot)) slotMap.set(slot, new Set());
+    slotMap.get(slot).add(m);
+  }
+  const slots = [...slotMap.keys()].sort((a, b) => a - b);
+  if (!slots.length) return null;
+
+  let out = '';
+  slots.forEach((s, i) => {
+    if (i > 0) out += ' '.repeat(Math.min(s - slots[i - 1] - 1, 16));
+    const chars = [...slotMap.get(s)].sort((a, b) => a - b).map(m => midiToVpChar[m]);
+    out += chars.length > 1 ? `[${chars.join('')}]` : chars[0];
+    if ((i + 1) % 16 === 0) out += '\n'; // mise en page (les retours ligne ne comptent pas)
+  });
+
+  // vitesse recommandée = pas de grille par seconde (au premier tempo du fichier)
+  const us = (tempos.find(t => t.us !== 500000) || tempos[0]).us;
+  const stepSec = step * us / division / 1e6;
+  const speed = Math.min(14, Math.max(2, Math.round(1 / stepSec * 2) / 2));
+
+  return { text: out, kept: notes.length - dropped, dropped, shift, speed };
+}
+
+async function importMidiFile(file) {
+  try {
+    const result = midiToSheet(parseMidi(await file.arrayBuffer()));
+    if (!result) { sheetProgress.textContent = 'Aucune note exploitable dans ce fichier MIDI.'; return; }
+    stopAuto(false);
+    stopSheet(false);
+    sheetInput.value = result.text;
+    tempoEl.value = result.speed;
+    tempoEl.dispatchEvent(new Event('input'));
+    const extras = [
+      result.dropped ? `${result.dropped} notes hors plage ignorées` : '',
+      result.shift ? `transposé ${result.shift > 0 ? '+' : ''}${result.shift / 12} octave(s)` : '',
+    ].filter(Boolean).join(', ');
+    sheetProgress.classList.remove('done');
+    sheetProgress.textContent = `MIDI importé : ${result.kept} notes${extras ? ` (${extras})` : ''} — vitesse réglée à ${String(result.speed).replace('.', ',')}.`;
+  } catch (err) {
+    sheetProgress.textContent = `Import MIDI impossible : ${err.message}`;
+  }
+}
+
+midiImport.addEventListener('click', () => midiFile.click());
+midiFile.addEventListener('change', () => {
+  const f = midiFile.files[0];
+  midiFile.value = '';
+  if (f) importMidiFile(f);
+});
+/* Glisser-déposer un .mid sur le panneau */
+sheetPanel.addEventListener('dragover', e => e.preventDefault());
+sheetPanel.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = [...e.dataTransfer.files].find(f => /\.midi?$/i.test(f.name));
+  if (f) importMidiFile(f);
+});
+
 /* ---------- Agrandissement du panneau partition ---------- */
 const sheetMax = document.getElementById('sheetMax');
 
@@ -920,7 +1059,7 @@ document.addEventListener('pointerdown', e => {
    reste entièrement dédié au piano (Espace = pédale, jamais un bouton). */
 [btnSustain, btnLabels, volumeEl, trDown, trUp, trVal, btnSheet,
  sheetStart, sheetStop, autoStart, autoPause, tempoEl, tempoDown, tempoUp,
- recBtn, shareBtn, libSave, libDelete, libExport, libImport, sheetMax, ...dockButtons].forEach(el =>
+ recBtn, shareBtn, libSave, libDelete, libExport, libImport, midiImport, sheetMax, ...dockButtons].forEach(el =>
   el.addEventListener('pointerup', () => el.blur())
 );
 
