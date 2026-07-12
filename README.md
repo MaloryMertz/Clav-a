@@ -36,8 +36,9 @@ C'est un site 100 % statique, sans build ni dépendance : copiez le dossier tel 
 | `app.js` | Moteur audio Web Audio, clavier, souris/tactile, MIDI, PWA |
 | `sw.js` | Service worker cache-first (mode hors-ligne) |
 | `manifest.webmanifest` | Manifeste PWA (installable) |
-| `samples/*.mp3` | 21 samples Salamander Grand Piano |
+| `samples/*.mp3` | 29 samples Salamander Grand Piano (C1 → C8) |
 
-## Crédits
+## Licences
 
-- Samples : [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) par Alexander Holm (CC-BY 3.0), via tonejs.github.io.
+- **Code** : [MIT](LICENSE) — © 2026 Malory M.
+- **Échantillons audio** (`samples/`) : [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) par Alexander Holm, licence **CC-BY 3.0** (attribution obligatoire), via tonejs.github.io.
