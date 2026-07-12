@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<title>Piano — Grand Piano Virtuel</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-labels="keys">
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+    <h1>Piano</h1>
+  </div>
+
+  <div class="note-display" id="noteDisplay" aria-live="polite">
+    <span class="nd-note" id="ndNote">—</span>
+    <span class="nd-key" id="ndKey"></span>
+  </div>
+
+  <div class="controls">
+    <button id="btnSustain" class="ctl-btn" type="button" aria-pressed="false" title="Verrouiller la pédale de sustain (ou maintenir Espace)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 3v10"/><path d="M12 13c-3.5 0-6 2-6 5h12c0-3-2.5-5-6-5z"/>
+      </svg>
+      <span>Sustain</span>
+      <span class="dot" aria-hidden="true"></span>
+    </button>
+
+    <div class="transpose" role="group" aria-label="Transposition">
+      <button id="trDown" class="ctl-btn sq" type="button" title="Transposer −1 demi-ton" aria-label="Transposer moins un demi-ton">−</button>
+      <button id="trVal" class="ctl-btn sq val" type="button" title="Réinitialiser la transposition">0</button>
+      <button id="trUp" class="ctl-btn sq" type="button" title="Transposer +1 demi-ton" aria-label="Transposer plus un demi-ton">+</button>
+    </div>
+
+    <button id="btnSheet" class="ctl-btn" type="button" aria-pressed="false" title="Jouer une partition (touches guidées ou lecture auto)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>
+      </svg>
+      <span>Partition</span>
+    </button>
+
+    <button id="btnLabels" class="ctl-btn" type="button" title="Changer les étiquettes des touches">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11v2M11 11v2M15 11v2"/>
+      </svg>
+      <span id="labelsText">Clavier</span>
+    </button>
+
+    <label class="vol">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+      </svg>
+      <input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume">
+    </label>
+
+    <span class="badge" id="midiBadge" hidden title="Périphérique MIDI connecté">MIDI</span>
+    <span class="badge badge-off" id="offlineBadge" hidden title="Mode hors-ligne : lecture depuis le cache">HORS-LIGNE</span>
+
+    <div class="settings-wrap">
+      <button id="btnSettings" class="ctl-btn sq" type="button" aria-expanded="false" title="Réglages d'affichage" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/>
+        </svg>
+      </button>
+      <div class="settings-pop" id="settingsPop" hidden>
+        <p class="sp-title">Affichage</p>
+        <label><input type="checkbox" id="optSheet"> Panneau partition</label>
+        <label><input type="checkbox" id="optFx" checked> Feu d'artifice de notes</label>
+        <label><input type="checkbox" id="optHint" checked> Ligne d'aide</label>
+        <label><input type="checkbox" id="optSig" checked> Signature</label>
+        <p class="sp-title">Son</p>
+        <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
+          <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+        </label>
+        <p class="sp-title">Métronome</p>
+        <label><input type="checkbox" id="optMetro"> Activer</label>
+        <label class="sp-slider"><span>BPM <b id="metroBpmVal">100</b></span><input type="range" id="optMetroBpm" min="40" max="208" value="100" aria-label="Tempo du métronome">
+          <button id="metroBpmReset" class="sp-reset" type="button" title="Réinitialiser le tempo (100)" aria-label="Réinitialiser le tempo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+        </label>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="stage">
+  <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+  <div class="arena" id="arena" data-dock="bottom">
+    <div class="piano-shell">
+      <div class="piano-top">
+        <span class="brand-name" id="signature">Malory M.</span>
+      </div>
+      <div class="piano-scroll">
+        <div class="piano" id="piano" aria-label="Clavier de piano, 61 touches de Do2 à Do7"></div>
+      </div>
+    </div>
+    <section class="sheet" id="sheetPanel" hidden aria-label="Partition">
+      <div class="sheet-lib">
+        <select id="libSelect" aria-label="Bibliothèque de partitions">
+          <option value="">— Bibliothèque —</option>
+        </select>
+        <button id="libSave" class="ctl-btn sm2" type="button" title="Enregistrer la partition actuelle dans la bibliothèque">Enregistrer</button>
+        <button id="libDelete" class="ctl-btn sm2" type="button" title="Supprimer la partition sélectionnée">Supprimer</button>
+        <button id="libExport" class="ctl-btn sm2" type="button" title="Exporter toute la bibliothèque en fichier">Exporter</button>
+        <button id="libImport" class="ctl-btn sm2" type="button" title="Importer un fichier de partitions">Importer</button>
+        <input type="file" id="libFile" accept="application/json,.json" hidden>
+      </div>
+      <textarea id="sheetInput" rows="3" spellcheck="false"
+        placeholder="Collez une partition ici — ex. : 8 t u [8t] o — accords entre [ ], vitesse locale avec {x2} {x0.5} {x1}"></textarea>
+      <div class="sheet-actions">
+        <button id="sheetStart" class="ctl-btn" type="button" title="Mode guidé : les touches s'illuminent, à vous de jouer">Suivre</button>
+        <button id="autoStart" class="ctl-btn" type="button" title="Lecture automatique de la partition">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          Auto
+        </button>
+        <button id="autoPause" class="ctl-btn" type="button" disabled title="Mettre en pause ou reprendre la lecture automatique">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path id="autoPauseIcon" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+          <span id="autoPauseText">Pause</span>
+        </button>
+        <button id="sheetStop" class="ctl-btn" type="button" disabled>Arrêter</button>
+        <button id="recBtn" class="ctl-btn" type="button" title="Enregistrer ce que vous jouez et générer la partition">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>
+          Rec
+        </button>
+        <button id="shareBtn" class="ctl-btn" type="button" title="Copier un lien de partage de cette partition">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>
+          </svg>
+          Partager
+        </button>
+        <div class="tempo" title="Vitesse de lecture automatique (notes par seconde)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <button id="tempoDown" class="ctl-btn tp" type="button" title="Ralentir" aria-label="Ralentir la lecture">−</button>
+          <input id="tempo" type="range" min="2" max="14" step="0.5" value="6" aria-label="Vitesse de lecture automatique">
+          <button id="tempoUp" class="ctl-btn tp" type="button" title="Accélérer" aria-label="Accélérer la lecture">+</button>
+          <span class="tempo-val" id="tempoVal">6</span>
+        </div>
+        <span class="sheet-progress" id="sheetProgress" aria-live="polite"></span>
+        <div class="dock" role="group" aria-label="Position du panneau partition">
+          <button class="ctl-btn dk" type="button" data-dock="top" title="Panneau au-dessus du piano" aria-label="Panneau au-dessus">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+          <button class="ctl-btn dk" type="button" data-dock="bottom" title="Panneau sous le piano" aria-label="Panneau en dessous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+          </button>
+          <button class="ctl-btn dk" type="button" data-dock="left" title="Panneau à gauche du piano" aria-label="Panneau à gauche">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+          </button>
+          <button class="ctl-btn dk" type="button" data-dock="right" title="Panneau à droite du piano" aria-label="Panneau à droite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="hint" id="hintLine">
+    Rangée <kbd>1</kbd>–<kbd>0</kbd> puis <kbd>q</kbd>…<kbd>m</kbd>,
+    <kbd>Maj</kbd> pour les dièses, <kbd>Espace</kbd> pour la pédale de sustain.
+  </p>
+</main>
+
+<div class="loader" id="loader" role="status">
+  <div class="loader-card">
+    <svg class="logo big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+    <p id="loaderText">Chargement des échantillons…</p>
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

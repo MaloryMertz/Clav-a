@@ -1,0 +1,18 @@
+{
+  "name": "Piano — Grand Piano Virtuel",
+  "short_name": "Piano",
+  "description": "Piano virtuel 61 touches avec le mapping clavier de virtualpiano.net et le son du Salamander Grand Piano.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
