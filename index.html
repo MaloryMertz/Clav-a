@@ -123,6 +123,14 @@
           </svg>
         </button>
       </div>
+      <div class="save-row" id="saveRow" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>
+        </svg>
+        <input id="saveName" type="text" maxlength="60" placeholder="Nom de la partition…" aria-label="Nom de la partition">
+        <button id="saveOk" class="ctl-btn sm2" type="button">Enregistrer</button>
+        <button id="saveCancel" class="ctl-btn sm2" type="button">Annuler</button>
+      </div>
       <div class="midi-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="midiQuery" type="search" placeholder="Rechercher un fichier MIDI en ligne (BitMidi)…" aria-label="Rechercher un fichier MIDI en ligne">

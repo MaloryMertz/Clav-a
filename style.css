@@ -458,11 +458,28 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 .sheet-lib select:focus-visible { outline: none; box-shadow: var(--focus); }
 .ctl-btn.sm2 { min-height: 38px; padding: 6px 12px; font-size: 13px; }
 
-.midi-search {
+.midi-search,
+.save-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.save-row svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+.save-row input {
+  flex: 1;
+  min-height: 38px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--accent-deep);
+  border-radius: 10px;
+}
+.save-row input:focus-visible { outline: none; box-shadow: var(--focus); }
+#saveOk { border-color: var(--accent-deep); }
+
+.ctl-btn.danger { border-color: #dc2626; color: #fecaca; }
 .midi-search svg { width: 16px; height: 16px; color: var(--text-dim); flex-shrink: 0; }
 .midi-search input {
   flex: 1;

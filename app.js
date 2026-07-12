@@ -672,26 +672,65 @@ libSelect.addEventListener('change', () => {
     sheetInput.value = lib[libSelect.value]; // n'interrompt pas la lecture en cours
   }
 });
+/* Enregistrement : barre de saisie intégrée, non bloquante (le son continue) */
+const saveRow = document.getElementById('saveRow');
+const saveName = document.getElementById('saveName');
+const saveOk = document.getElementById('saveOk');
+const saveCancel = document.getElementById('saveCancel');
+
+function closeSaveRow() {
+  saveRow.hidden = true;
+}
 libSave.addEventListener('click', () => {
   if (!sheetInput.value.trim()) { sheetProgress.textContent = 'Rien à enregistrer.'; return; }
-  const name = prompt('Nom de la partition :', libSelect.value || 'Ma partition');
-  if (!name) return;
+  saveRow.hidden = false;
+  saveName.value = libSelect.value || 'Ma partition';
+  saveName.focus();
+  saveName.select();
+});
+saveOk.addEventListener('click', () => {
+  const name = saveName.value.trim();
+  if (!name) { saveName.focus(); return; }
   const lib = loadLib();
   lib[name] = sheetInput.value;
   saveLibData(lib);
   refreshLibSelect(name);
+  closeSaveRow();
   sheetProgress.classList.remove('done');
   sheetProgress.textContent = `« ${name} » enregistrée.`;
 });
+saveCancel.addEventListener('click', closeSaveRow);
+saveName.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); saveOk.click(); }
+  else if (e.key === 'Escape') closeSaveRow();
+});
+
+/* Suppression : confirmation en deux clics, sans popup bloquante */
+let deleteArmTimer = null;
+function disarmDelete() {
+  clearTimeout(deleteArmTimer);
+  libDelete.textContent = 'Supprimer';
+  libDelete.classList.remove('danger');
+  delete libDelete.dataset.arm;
+}
 libDelete.addEventListener('click', () => {
   if (!libSelect.value) return;
-  if (!confirm(`Supprimer « ${libSelect.value} » ?`)) return;
-  const lib = loadLib();
+  if (libDelete.dataset.arm !== libSelect.value) { // 1er clic : on arme
+    libDelete.dataset.arm = libSelect.value;
+    libDelete.textContent = 'Confirmer ?';
+    libDelete.classList.add('danger');
+    clearTimeout(deleteArmTimer);
+    deleteArmTimer = setTimeout(disarmDelete, 3000);
+    return;
+  }
+  const lib = loadLib(); // 2e clic : suppression
   delete lib[libSelect.value];
   saveLibData(lib);
   refreshLibSelect();
+  disarmDelete();
   sheetProgress.textContent = 'Partition supprimée.';
 });
+libSelect.addEventListener('change', disarmDelete);
 libExport.addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(loadLib(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
