@@ -785,56 +785,83 @@ recBtn.addEventListener('click', () => {
 const midiImport = document.getElementById('midiImport');
 const midiFile = document.getElementById('midiFile');
 
-/* Parseur Standard MIDI File (formats 0 et 1, division TPQN) */
+/* Parseur Standard MIDI File — tolérant : chunks inconnus ignorés, wrapper
+   RIFF/octets parasites tolérés, piste corrompue tronquée sans tout perdre. */
 function parseMidi(buf) {
+  const bytes = new Uint8Array(buf);
+  // cherche l'en-tête MThd (fichiers .rmi RIFF ou avec préambule parasite)
+  let start = -1;
+  for (let i = 0; i + 4 <= bytes.length && i < 8192; i++) {
+    if (bytes[i] === 0x4d && bytes[i + 1] === 0x54 && bytes[i + 2] === 0x68 && bytes[i + 3] === 0x64) { start = i; break; }
+  }
+  if (start < 0) throw new Error('en-tête MIDI (MThd) introuvable — est-ce bien un fichier .mid ?');
+
   const d = new DataView(buf);
-  let pos = 0;
+  let pos = start;
   const str = n => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(pos++)); return s; };
   const u32 = () => { const v = d.getUint32(pos); pos += 4; return v; };
   const u16 = () => { const v = d.getUint16(pos); pos += 2; return v; };
   const u8 = () => d.getUint8(pos++);
   const vlq = () => { let v = 0, b; do { b = u8(); v = (v << 7) | (b & 0x7f); } while (b & 0x80); return v; };
 
-  if (str(4) !== 'MThd') throw new Error('ce n’est pas un fichier MIDI');
+  str(4); // MThd
   const hlen = u32();
   u16(); // format
-  const ntrk = u16();
+  u16(); // nombre de pistes (on lit tous les chunks jusqu'au bout du fichier)
   const division = u16();
-  if (division & 0x8000) throw new Error('division SMPTE non gérée');
+  if (division & 0x8000) throw new Error('fichier à timecode SMPTE, non géré (rare — réexportez en tempo standard)');
   pos += hlen - 6;
 
   const notes = [];
   const tempos = [{ tick: 0, us: 500000 }];
-  for (let t = 0; t < ntrk; t++) {
-    if (str(4) !== 'MTrk') throw new Error('piste invalide');
-    const end = pos + u32();
-    let tick = 0;
-    let status = 0;
-    while (pos < end) {
-      tick += vlq();
-      let b = u8();
-      if (b < 0x80) { pos--; b = status; } else if (b < 0xf0) status = b;
-      const type = b & 0xf0;
-      const ch = b & 0x0f;
-      if (type === 0x90) {
-        const note = u8(), vel = u8();
-        if (vel > 0 && ch !== 9) notes.push({ tick, midi: note }); // canal 10 = percussions, ignoré
-      } else if (type === 0x80 || type === 0xa0 || type === 0xb0 || type === 0xe0) {
-        pos += 2;
-      } else if (type === 0xc0 || type === 0xd0) {
-        pos += 1;
-      } else if (b === 0xff) {
-        const meta = u8(), len = vlq();
-        if (meta === 0x51 && len === 3) tempos.push({ tick, us: (u8() << 16) | (u8() << 8) | u8() });
-        else pos += len;
-      } else if (b === 0xf0 || b === 0xf7) {
-        pos += vlq();
-      } else {
-        throw new Error('événement inattendu');
+  const SYS_LEN = { 0xf1: 1, 0xf2: 2, 0xf3: 1, 0xf4: 0, 0xf5: 0, 0xf6: 0 };
+
+  while (pos + 8 <= bytes.length) {
+    const type = str(4);
+    const len = u32();
+    const end = Math.min(pos + len, bytes.length);
+    if (type !== 'MTrk') { pos = end; continue; } // chunk propriétaire (XF, karaoké…) : ignoré
+    try {
+      let tick = 0;
+      let status = 0;
+      while (pos < end) {
+        tick += vlq();
+        let b = u8();
+        if (b < 0x80) {
+          if (status < 0x80) break; // flux incohérent : on tronque la piste
+          pos--;
+          b = status;
+        } else if (b < 0xf0) {
+          status = b;
+        }
+        const evType = b & 0xf0;
+        const ch = b & 0x0f;
+        if (evType === 0x90) {
+          const note = u8(), vel = u8();
+          if (vel > 0 && ch !== 9) notes.push({ tick, midi: note }); // canal 10 = percussions
+        } else if (evType === 0x80 || evType === 0xa0 || evType === 0xb0 || evType === 0xe0) {
+          pos += 2;
+        } else if (evType === 0xc0 || evType === 0xd0) {
+          pos += 1;
+        } else if (b === 0xff) {
+          const meta = u8(), l = vlq();
+          if (meta === 0x51 && l === 3) tempos.push({ tick, us: (u8() << 16) | (u8() << 8) | u8() });
+          else pos += l;
+        } else if (b === 0xf0 || b === 0xf7) {
+          pos += vlq();
+        } else if (b >= 0xf8) {
+          /* octet temps réel : aucune donnée */
+        } else if (b in SYS_LEN) {
+          pos += SYS_LEN[b];
+        } else {
+          break; // événement inconnu : on garde ce qui a été lu
+        }
       }
-    }
+    } catch (_) { /* piste tronquée : on garde les notes déjà lues */ }
     pos = end;
   }
+
+  if (!notes.length) throw new Error('aucune note trouvée dans ce fichier');
   notes.sort((a, b) => a.tick - b.tick);
   tempos.sort((a, b) => a.tick - b.tick);
   return { notes, tempos, division };
