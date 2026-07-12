@@ -781,6 +781,19 @@ recBtn.addEventListener('click', () => {
   }
 });
 
+/* ---------- Agrandissement du panneau partition ---------- */
+const sheetMax = document.getElementById('sheetMax');
+
+function setSheetMax(on) {
+  sheetPanel.classList.toggle('max', on);
+  sheetMax.setAttribute('aria-pressed', String(on));
+  sheetMax.title = on ? 'Réduire le panneau (Échap)' : 'Agrandir le panneau en plein écran (Échap pour réduire)';
+}
+sheetMax.addEventListener('click', () => setSheetMax(!sheetPanel.classList.contains('max')));
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && sheetPanel.classList.contains('max')) setSheetMax(false);
+});
+
 /* ---------- Position du panneau partition (dock) ---------- */
 const arena = document.getElementById('arena');
 const dockButtons = [...document.querySelectorAll('.dock [data-dock]')];
@@ -907,7 +920,7 @@ document.addEventListener('pointerdown', e => {
    reste entièrement dédié au piano (Espace = pédale, jamais un bouton). */
 [btnSustain, btnLabels, volumeEl, trDown, trUp, trVal, btnSheet,
  sheetStart, sheetStop, autoStart, autoPause, tempoEl, tempoDown, tempoUp,
- recBtn, shareBtn, libSave, libDelete, libExport, libImport, ...dockButtons].forEach(el =>
+ recBtn, shareBtn, libSave, libDelete, libExport, libImport, sheetMax, ...dockButtons].forEach(el =>
   el.addEventListener('pointerup', () => el.blur())
 );
 

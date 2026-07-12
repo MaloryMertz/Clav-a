@@ -253,12 +253,12 @@ body {
 .arena[data-dock="right"] .sheet {
   width: 340px;
   min-width: 240px;
-  max-width: 55vw;
+  max-width: 75vw;
   resize: horizontal;
   overflow: auto;
 }
 .arena[data-dock="left"] .sheet textarea,
-.arena[data-dock="right"] .sheet textarea { flex: 1; min-height: 120px; }
+.arena[data-dock="right"] .sheet textarea { min-height: 160px; }
 
 @media (max-width: 900px) {
   .arena { flex-direction: column !important; }
@@ -410,7 +410,8 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 }
 .sheet textarea {
   width: 100%;
-  resize: vertical;
+  max-width: 100%;
+  resize: both;   /* agrandissable librement, hauteur ET largeur */
   min-height: 64px;
   padding: 10px 12px;
   font: inherit;
@@ -423,6 +424,25 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 }
 .sheet textarea:focus-visible { outline: none; box-shadow: var(--focus); }
 .sheet-lib { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sheet-lib .maxbtn { margin-left: auto; min-width: 38px; justify-content: center; }
+.sheet-lib .maxbtn svg { width: 15px; height: 15px; }
+
+/* Panneau maximisé : occupe toute la fenêtre sous la barre du haut */
+.sheet.max {
+  position: fixed;
+  inset: 80px 18px 18px 18px;
+  z-index: 90;
+  width: auto !important;
+  max-width: none !important;
+  resize: none;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .75), 0 0 0 1px var(--border);
+}
+.sheet.max textarea {
+  flex: 1;
+  resize: none;
+  font-size: 16px;
+  line-height: 1.7;
+}
 .sheet-lib select {
   min-height: 38px;
   padding: 6px 10px;

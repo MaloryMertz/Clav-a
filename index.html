@@ -115,6 +115,11 @@
         <button id="libExport" class="ctl-btn sm2" type="button" title="Exporter toute la bibliothèque en fichier">Exporter</button>
         <button id="libImport" class="ctl-btn sm2" type="button" title="Importer un fichier de partitions">Importer</button>
         <input type="file" id="libFile" accept="application/json,.json" hidden>
+        <button id="sheetMax" class="ctl-btn sm2 maxbtn" type="button" aria-pressed="false" title="Agrandir le panneau en plein écran (Échap pour réduire)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+        </button>
       </div>
       <textarea id="sheetInput" rows="3" spellcheck="false"
         placeholder="Collez une partition ici — ex. : 8 t u [8t] o — accords entre [ ], vitesse locale avec {x2} {x0.5} {x1}"></textarea>
