@@ -291,12 +291,14 @@ body {
 .piano {
   position: relative;
   height: calc(clamp(150px, 26vw, 260px) * var(--key-zoom, 1));
-  min-width: calc(940px * var(--key-zoom, 1));
+  /* si le zoom rend le clavier plus étroit que l'écran, il s'étire pour le remplir */
+  min-width: max(calc(940px * var(--key-zoom, 1)), 100%);
   border-radius: 0 0 8px 8px;
   /* feutre rouge au-dessus des touches */
   border-top: 7px solid var(--felt);
   background: #0a0a0c;
   touch-action: none;
+  overflow: hidden; /* les étiquettes ne créent pas de défilement à petit zoom */
 }
 
 .key { position: absolute; top: 0; cursor: pointer; }
@@ -733,6 +735,33 @@ body.keys-only .piano { height: calc(min(80dvh, 560px) * var(--key-zoom, 1)); }
 .keys-exit:hover { color: var(--accent); border-color: var(--accent-deep); }
 .keys-exit:focus-visible { outline: none; box-shadow: var(--focus); }
 .keys-exit svg { width: 17px; height: 17px; }
+
+/* Sur petit écran, le popover réglages devient un panneau pleine largeur
+   (ancré à l'engrenage, il pouvait sortir de l'écran) */
+@media (max-width: 700px) {
+  .settings-pop {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 60px;
+    max-height: min(75dvh, 480px);
+    overflow-y: auto;
+  }
+}
+
+/* ===== Paysage forcé par rotation CSS (iPhone & verrouillage refusé) ===== */
+body.css-landscape {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  width: 100dvh;
+  height: 100dvw;
+  min-height: 0; /* sans ça, le min-height:100dvh du body fausse la rotation */
+  transform: rotate(90deg);
+  transform-origin: left top;
+  overflow-y: auto;
+}
+body.css-landscape .fx { display: none; } /* le canvas ne suit pas la rotation */
 
 /* ===== Incitation à la rotation (téléphone en portrait) ===== */
 .rotate-hint {

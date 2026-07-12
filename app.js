@@ -1404,16 +1404,28 @@ rotateDismiss.addEventListener('click', () => {
   sessionStorage.setItem('piano.rotateDismissed', '1');
   updateRotateHint();
 });
+function setCssLandscape(on) {
+  document.body.classList.toggle('css-landscape', on);
+}
+
 rotateFs.addEventListener('click', async () => {
+  let locked = false;
   try {
     await document.documentElement.requestFullscreen();
-    // Android : verrouille en paysage ; iOS ne le permet pas (tourner l'appareil suffit)
-    await screen.orientation?.lock?.('landscape');
-  } catch (_) { /* verrouillage refusé (iOS/desktop) : l'utilisateur tourne l'appareil */ }
+    // Android : verrouillage natif en paysage
+    await screen.orientation.lock('landscape');
+    locked = true;
+  } catch (_) { /* iOS ou verrouillage refusé */ }
+  if (!locked) setCssLandscape(true); // plan B : on tourne toute l'app à 90° en CSS
   sessionStorage.setItem('piano.rotateDismissed', '1');
   updateRotateHint();
 });
-window.addEventListener('resize', updateRotateHint);
+
+window.addEventListener('resize', () => {
+  // l'appareil est physiquement passé en paysage : la rotation CSS n'a plus lieu d'être
+  if (window.innerWidth > window.innerHeight) setCssLandscape(false);
+  updateRotateHint();
+});
 updateRotateHint();
 
 /* ---------- PWA : service worker + indicateur hors-ligne ---------- */
