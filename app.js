@@ -107,6 +107,26 @@ function resumeCtx() {
   if (ctx.state === 'suspended') ctx.resume();
 }
 
+/* Préchauffage : au tout premier geste (clic/touche), on réveille le contexte
+   audio ET la chaîne de traitement (convolver de réverb inclus) avec un
+   échantillon silencieux — sinon la première vraie note arrive en retard. */
+let audioWarmed = false;
+function warmUpAudio() {
+  const blip = () => {
+    if (audioWarmed) return;
+    audioWarmed = true;
+    const src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    src.connect(masterGain);
+    src.start();
+  };
+  if (ctx.state === 'suspended') ctx.resume().then(blip);
+  else blip();
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  window.addEventListener(ev, warmUpAudio, { capture: true, passive: true })
+);
+
 let transpose = 0; // demi-tons, -12..+12 (comme virtualpiano.net)
 
 function noteOn(midi, velocity = 0.85) {
@@ -649,8 +669,7 @@ refreshLibSelect();
 libSelect.addEventListener('change', () => {
   const lib = loadLib();
   if (libSelect.value && lib[libSelect.value] !== undefined) {
-    stopAuto(false); stopSheet(false);
-    sheetInput.value = lib[libSelect.value];
+    sheetInput.value = lib[libSelect.value]; // n'interrompt pas la lecture en cours
   }
 });
 libSave.addEventListener('click', () => {
@@ -872,17 +891,39 @@ function bestOctaveShift(notes) {
   let best = 0, bestCount = -1;
   for (let s = -36; s <= 36; s += 12) {
     const c = notes.reduce((a, n) => a + (n.midi + s >= FIRST_MIDI && n.midi + s <= LAST_MIDI ? 1 : 0), 0);
-    if (c > bestCount) { bestCount = c; best = s; }
+    // à égalité, préférer la transposition la plus proche de l'original
+    if (c > bestCount || (c === bestCount && Math.abs(s) < Math.abs(best))) { bestCount = c; best = s; }
   }
   return best;
 }
 
 function midiToSheet({ notes, tempos, division }) {
   if (!notes.length) return null;
-  // grille : croche par défaut, double-croche si le fichier est plus fin
-  const quantErr = s => notes.reduce((a, n) => a + Math.abs(n.tick - Math.round(n.tick / s) * s), 0) / notes.length;
-  let step = division / 2;
-  if (quantErr(step) > division / 8) step = division / 4;
+
+  /* Grille adaptative : on prend la plus grossière qui ne fusionne pas
+     d'attaques distinctes (fusion = fausses touches simultanées). */
+  const onsets = [...new Set(notes.map(n => n.tick))].sort((a, b) => a - b);
+  const collisionRate = s => {
+    const seen = new Set();
+    let merged = 0;
+    for (const t of onsets) {
+      const q = Math.round(t / s);
+      if (seen.has(q)) merged++; else seen.add(q);
+    }
+    return merged / onsets.length;
+  };
+  let step = division / 8;
+  for (const cand of [division, division / 2, division / 3, division / 4, division / 6, division / 8]) {
+    if (collisionRate(cand) <= 0.02) { step = cand; break; }
+  }
+
+  /* Tempo en vigueur à un tick donné (la table est triée) */
+  const usAt = tick => {
+    let us = 500000;
+    for (const t of tempos) { if (t.tick <= tick) us = t.us; else break; }
+    return us;
+  };
+  const baseUs = usAt(notes[0].tick);
 
   const shift = bestOctaveShift(notes);
   const slotMap = new Map();
@@ -898,19 +939,27 @@ function midiToSheet({ notes, tempos, division }) {
   if (!slots.length) return null;
 
   let out = '';
+  let curMul = 1;
+  let tempoMarks = 0;
   slots.forEach((s, i) => {
     if (i > 0) out += ' '.repeat(Math.min(s - slots[i - 1] - 1, 16));
+    // changement de tempo dans le fichier → directive {xN} (aucun temps consommé)
+    const mul = Math.min(8, Math.max(0.1, baseUs / usAt(s * step)));
+    if (Math.abs(mul - curMul) / curMul > 0.03) {
+      out += `{x${(Math.round(mul * 100) / 100).toString()}}`;
+      curMul = mul;
+      tempoMarks++;
+    }
     const chars = [...slotMap.get(s)].sort((a, b) => a - b).map(m => midiToVpChar[m]);
     out += chars.length > 1 ? `[${chars.join('')}]` : chars[0];
     if ((i + 1) % 16 === 0) out += '\n'; // mise en page (les retours ligne ne comptent pas)
   });
 
-  // vitesse recommandée = pas de grille par seconde (au premier tempo du fichier)
-  const us = (tempos.find(t => t.us !== 500000) || tempos[0]).us;
-  const stepSec = step * us / division / 1e6;
+  // vitesse du curseur = pas de grille par seconde, au tempo de la première note
+  const stepSec = step * baseUs / division / 1e6;
   const speed = Math.min(14, Math.max(2, Math.round(1 / stepSec * 2) / 2));
 
-  return { text: out, kept: notes.length - dropped, dropped, shift, speed };
+  return { text: out, kept: notes.length - dropped, dropped, shift, speed, tempoMarks };
 }
 
 async function importMidiFile(file) {
@@ -929,6 +978,7 @@ function importMidiBuffer(buf) {
     const extras = [
       result.dropped ? `${result.dropped} notes hors plage ignorées` : '',
       result.shift ? `transposé ${result.shift > 0 ? '+' : ''}${result.shift / 12} octave(s)` : '',
+      result.tempoMarks ? `${result.tempoMarks} changement(s) de tempo intégré(s)` : '',
     ].filter(Boolean).join(', ');
     sheetProgress.classList.remove('done');
     sheetProgress.textContent = `MIDI importé : ${result.kept} notes${extras ? ` (${extras})` : ''} — vitesse réglée à ${String(result.speed).replace('.', ',')}.`;
