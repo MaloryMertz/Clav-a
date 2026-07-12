@@ -1,7 +1,7 @@
 {
-  "name": "Piano — Grand Piano Virtuel",
-  "short_name": "Piano",
-  "description": "Piano virtuel 61 touches avec le mapping clavier de virtualpiano.net et le son du Salamander Grand Piano.",
+  "name": "Clavéa — Grand Piano Virtuel",
+  "short_name": "Clavéa",
+  "description": "Clavéa : piano virtuel 61 touches avec le son du Salamander Grand Piano — partitions, lecture auto, import MIDI, hors-ligne.",
   "start_url": "./",
   "display": "standalone",
   "orientation": "landscape",

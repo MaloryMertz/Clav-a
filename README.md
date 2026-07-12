@@ -1,4 +1,4 @@
-# Clav-a — Grand Piano Virtuel
+# Clavéa — Grand Piano Virtuel
 
 Piano virtuel 61 touches (C2 → C7) dans le navigateur, avec le **mapping clavier de virtualpiano.net** et le son du **Salamander Grand Piano** (Yamaha C5 échantillonné, licence CC-BY).
 
