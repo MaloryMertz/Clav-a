@@ -541,10 +541,7 @@ const autoPauseText = document.getElementById('autoPauseText');
 const autoPauseIcon = document.getElementById('autoPauseIcon');
 
 let autoTimer = null;
-let autoIdx = 0;
-let autoSteps = [];
 let autoPaused = false;
-let autoMul = 1;      // multiplicateur de vitesse courant ({x2}, {x0.5}…)
 let autoPlayed = 0;   // pas joués (hors directives)
 let autoPlayable = 0; // total de pas jouables
 
@@ -625,7 +622,7 @@ function drawCascade() {
   const pianoW = pianoEl.getBoundingClientRect().width || W;
   const scale = W / pianoW;
   const bh = Math.max(12, H * 0.18);
-  for (let k = autoNextBeat; k < autoTimeline.length; k++) {
+  for (let k = visualBeat; k < autoTimeline.length; k++) {
     const rel = k - autoHead;              // pas d'avance (>0)
     if (rel > CASCADE_LEAD) break;
     const ev = autoTimeline[k];
@@ -651,17 +648,21 @@ function drawCascade() {
   cascadeCtx.globalAlpha = 1;
 }
 
-/* Moteur Auto à horloge musicale : la lecture avance en « pas » via
-   requestAnimationFrame. La même horloge pilote le son ET la cascade
-   (notes qui tombent), donc les deux restent toujours synchronisés.
-   autoTimeline = un pas par note/silence (les directives {xN} deviennent
-   un facteur de vitesse rattaché au pas). */
-const CASCADE_LEAD = 3.6; // nombre de pas visibles d'avance dans la cascade
+/* Moteur Auto : le SON est programmé à l'avance sur l'horloge audio
+   (AudioContext), qui continue de tourner même quand l'onglet n'a plus le
+   focus — la lecture ne s'arrête donc plus en changeant d'onglet. Le VISUEL
+   (cascade + touches) est piloté séparément par requestAnimationFrame ;
+   il peut se figer en arrière-plan sans gêner le son. */
+const CASCADE_LEAD = 3.6;       // pas visibles d'avance dans la cascade
+const AUTO_LOOKAHEAD = 1.6;     // s programmés à l'avance (couvre le throttle des onglets)
 let autoTimeline = [];
-let autoHead = 0;         // position de lecture en pas (flottant)
-let autoNextBeat = 0;     // prochain pas à déclencher
+let beatTimes = [];             // beatTimes[k] = temps audio (s) où le pas k sonne
+let schedBeat = 0;              // prochain pas à programmer (audio)
+let visualBeat = 0;             // prochain pas déclenché visuellement
+let autoHead = 0;               // position fractionnaire en pas (cascade)
 let autoRaf = null;
-let autoLastTs = 0;
+let autoSchedTimer = null;
+let autoSchedVoices = [];        // voix programmées (annulables à la pause/stop)
 
 function buildTimeline(text) {
   const steps = parseSheetTimed(text);
@@ -674,32 +675,104 @@ function buildTimeline(text) {
   return tl;
 }
 
-function autoFrame(ts) {
-  const dt = Math.min(0.05, (ts - autoLastTs) / 1000);
-  autoLastTs = ts;
-  const cur = autoTimeline[Math.min(Math.max(0, Math.floor(autoHead)), autoTimeline.length - 1)] || { mul: 1 };
-  autoHead += dt * Number(tempoEl.value) * cur.mul;
+function autoStepDur(beat) { // durée (s) d'un pas au tempo courant
+  const ev = autoTimeline[Math.min(Math.max(0, beat), autoTimeline.length - 1)] || { mul: 1 };
+  return 1 / (Number(tempoEl.value) * ev.mul);
+}
+function beatTimeAt(k) { // garantit beatTimes[0..k] calculés (figés une fois posés)
+  while (beatTimes.length <= k) {
+    const i = beatTimes.length;
+    beatTimes[i] = beatTimes[i - 1] + autoStepDur(i - 1);
+  }
+  return beatTimes[k];
+}
 
-  while (autoNextBeat < autoTimeline.length && autoNextBeat <= autoHead) {
-    const ev = autoTimeline[autoNextBeat++];
-    autoPlayed++;
+function scheduleTone(midi, when, ring, velocity) {
+  if (midi < FIRST_MIDI || midi > LAST_MIDI || !buffers.length) return;
+  const sounding = midi + transpose;
+  const s = nearestSample(sounding);
+  const src = ctx.createBufferSource();
+  src.buffer = s.buffer;
+  src.playbackRate.value = Math.pow(2, (sounding - s.midi) / 12);
+  const gain = ctx.createGain();
+  const vel = Math.max(0.05, Math.min(1, velocity));
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(vel, when + 0.005); // attaque douce (anti-clic)
+  gain.gain.setTargetAtTime(0, when + ring, 0.12);      // extinction bornée (anti-empilement)
+  src.connect(gain);
+  gain.connect(masterGain);
+  src.start(when);
+  src.stop(when + ring + 0.8);
+  const voice = { src, gain };
+  src.onended = () => { try { gain.disconnect(); } catch (_) {} const i = autoSchedVoices.indexOf(voice); if (i >= 0) autoSchedVoices.splice(i, 1); };
+  autoSchedVoices.push(voice);
+}
+
+function autoSchedule() {
+  const horizon = ctx.currentTime + AUTO_LOOKAHEAD;
+  while (schedBeat < autoTimeline.length && beatTimeAt(schedBeat) < horizon) {
+    const ev = autoTimeline[schedBeat];
     if (ev.notes) {
-      ev.notes.forEach(m => noteOn(m, 0.85));
-      const dur = 1000 / (Number(tempoEl.value) * ev.mul);
-      const notes = ev.notes;
-      setTimeout(() => notes.forEach(m => noteOff(m)), dur * 0.92);
+      const ring = autoStepDur(schedBeat) + 0.45; // léger legato, borné
+      for (const m of ev.notes) scheduleTone(m, beatTimeAt(schedBeat), ring, 0.8);
     }
-    sheetProgress.textContent = `auto ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`
-      + (cur.mul !== 1 ? ` ×${cur.mul}` : '');
+    schedBeat++;
   }
+  if (schedBeat >= autoTimeline.length && ctx.currentTime > beatTimeAt(autoTimeline.length - 1) + 0.1) {
+    finishAuto();
+  }
+}
 
+function headFromTime(now) {
+  if (visualBeat <= 0) { // avant le 1er pas : valeur négative (lead-in de la cascade)
+    return (now - beatTimeAt(0)) / autoStepDur(0);
+  }
+  const k = visualBeat - 1;
+  const a = beatTimeAt(k), b = beatTimeAt(k + 1);
+  return k + (now - a) / (b - a);
+}
+
+function autoVisualFrame() {
+  const now = ctx.currentTime;
+  while (visualBeat < autoTimeline.length && beatTimes[visualBeat] !== undefined && beatTimes[visualBeat] <= now) {
+    const ev = autoTimeline[visualBeat];
+    autoPlayed = visualBeat + 1;
+    if (ev.notes) {
+      const fresh = now - beatTimes[visualBeat] < 0.35; // pas de rafale de fx au retour d'arrière-plan
+      const notes = ev.notes;
+      notes.forEach(m => { setKeyDown(m, true); if (fresh) spawnNoteFx(m); });
+      showNote(notes[notes.length - 1]);
+      setTimeout(() => notes.forEach(m => setKeyDown(m, false)), autoStepDur(visualBeat) * 900);
+      sheetProgress.textContent = `auto ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`
+        + (ev.mul !== 1 ? ` ×${ev.mul}` : '');
+    }
+    visualBeat++;
+  }
+  autoHead = headFromTime(now);
   drawCascade();
+  if (autoRaf !== null) autoRaf = requestAnimationFrame(autoVisualFrame);
+}
 
-  if (autoNextBeat >= autoTimeline.length && autoHead >= autoTimeline.length) {
-    stopAuto(true);
-    return;
-  }
-  autoRaf = requestAnimationFrame(autoFrame);
+function cancelScheduledVoices() {
+  const now = ctx.currentTime;
+  autoSchedVoices.forEach(v => {
+    try {
+      v.gain.gain.cancelScheduledValues(now);
+      v.gain.gain.setTargetAtTime(0, now, 0.03);
+      v.src.stop(now + 0.15);
+    } catch (_) {}
+  });
+  autoSchedVoices = [];
+}
+
+function autoResetUi() {
+  autoPaused = false;
+  setPauseUi(false);
+  sheetStart.disabled = false;
+  autoStart.disabled = false;
+  sheetStop.disabled = true;
+  autoPause.disabled = true;
+  cascadeOn(false);
 }
 
 function startAuto() {
@@ -711,10 +784,11 @@ function startAuto() {
     sheetProgress.textContent = 'Aucune note reconnue dans la partition.';
     return;
   }
-  autoHead = -CASCADE_LEAD; // les premières notes tombent avant d'être jouées
-  autoNextBeat = 0;
-  autoPlayed = 0;
   autoPlayable = autoTimeline.length;
+  autoPlayed = 0;
+  schedBeat = 0;
+  visualBeat = 0;
+  autoSchedVoices = [];
   autoPaused = false;
   setPauseUi(false);
   sheetStart.disabled = true;
@@ -723,21 +797,32 @@ function startAuto() {
   autoPause.disabled = false;
   cascadeOn(true);
   resumeCtx();
-  autoLastTs = performance.now();
-  autoRaf = requestAnimationFrame(autoFrame);
+  const lead = Math.min(1.2, CASCADE_LEAD * autoStepDur(0)); // temps de chute de la cascade
+  beatTimes = [ctx.currentTime + 0.15 + lead];
+  autoHead = -CASCADE_LEAD;
+  autoSchedule();
+  autoSchedTimer = setInterval(autoSchedule, 60);
+  autoRaf = requestAnimationFrame(autoVisualFrame);
 }
 
+/* Fin naturelle : on laisse les dernières notes résonner (pas d'annulation). */
+function finishAuto() {
+  if (autoSchedTimer !== null) { clearInterval(autoSchedTimer); autoSchedTimer = null; }
+  if (autoRaf !== null) { cancelAnimationFrame(autoRaf); autoRaf = null; }
+  autoSchedVoices = [];
+  autoResetUi();
+  sheetProgress.classList.add('done');
+  sheetProgress.textContent = 'Partition terminée.';
+}
+
+/* Arrêt manuel : coupe tout, y compris les notes déjà programmées. */
 function stopAuto(finished = false) {
-  if (autoRaf === null && !autoPaused && !finished) return;
-  if (autoRaf !== null) cancelAnimationFrame(autoRaf);
-  autoRaf = null;
-  autoPaused = false;
-  setPauseUi(false);
-  sheetStart.disabled = false;
-  autoStart.disabled = false;
-  sheetStop.disabled = true;
-  autoPause.disabled = true;
-  cascadeOn(false);
+  const active = autoSchedTimer !== null || autoRaf !== null || autoPaused;
+  if (!active && !finished) return;
+  if (autoSchedTimer !== null) { clearInterval(autoSchedTimer); autoSchedTimer = null; }
+  if (autoRaf !== null) { cancelAnimationFrame(autoRaf); autoRaf = null; }
+  cancelScheduledVoices();
+  autoResetUi();
   if (finished) {
     sheetProgress.classList.add('done');
     sheetProgress.textContent = 'Partition terminée.';
@@ -745,15 +830,20 @@ function stopAuto(finished = false) {
 }
 
 autoPause.addEventListener('click', () => {
-  if (autoPaused) {                 // reprendre là où on s'était arrêté
+  if (autoPaused) {                 // reprendre depuis le dernier pas sonné
     autoPaused = false;
     setPauseUi(false);
     resumeCtx();
-    autoLastTs = performance.now();
-    autoRaf = requestAnimationFrame(autoFrame);
-  } else if (autoRaf !== null) {    // mettre en pause
-    cancelAnimationFrame(autoRaf);
-    autoRaf = null;
+    schedBeat = visualBeat;
+    beatTimes.length = schedBeat;                 // efface les temps futurs
+    beatTimes[schedBeat] = ctx.currentTime + 0.12;
+    autoSchedule();
+    autoSchedTimer = setInterval(autoSchedule, 60);
+    autoRaf = requestAnimationFrame(autoVisualFrame);
+  } else if (autoSchedTimer !== null) {           // mettre en pause
+    clearInterval(autoSchedTimer); autoSchedTimer = null;
+    if (autoRaf !== null) { cancelAnimationFrame(autoRaf); autoRaf = null; }
+    cancelScheduledVoices();
     autoPaused = true;
     setPauseUi(true);
     sheetProgress.textContent = `pause ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`;
@@ -1429,7 +1519,7 @@ optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs
 optCascade.addEventListener('change', () => {
   uiPrefs.cascade = optCascade.checked;
   saveUiPrefs();
-  cascadeOn(autoRaf !== null || autoPaused); // reflète l'état pendant une lecture
+  cascadeOn(autoSchedTimer !== null || autoPaused); // reflète l'état pendant une lecture
 });
 
 /* ---------- Réverb ---------- */
