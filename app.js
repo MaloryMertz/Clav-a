@@ -1166,7 +1166,7 @@ const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, reverb: 25, keysOnly: false, keySize: 100 };
+let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
@@ -1186,9 +1186,31 @@ function applyUiPrefs() {
   optKeysOnly.checked = uiPrefs.keysOnly;
   document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
   keysOnlyExit.hidden = !uiPrefs.keysOnly;
-  optKeySize.value = uiPrefs.keySize;
-  document.documentElement.style.setProperty('--key-zoom', uiPrefs.keySize / 100);
+  applyKeySize();
 }
+
+/* Taille des touches : largeur et hauteur indépendantes, quatre curseurs synchronisés
+   (réglages + mini-panneau flottant du mode touches seules) */
+const optKeyH = document.getElementById('optKeyH');
+const ksW = document.getElementById('ksW');
+const ksH = document.getElementById('ksH');
+
+function applyKeySize() {
+  document.documentElement.style.setProperty('--key-w', uiPrefs.keySize / 100);
+  document.documentElement.style.setProperty('--key-h', uiPrefs.keyH / 100);
+  optKeySize.value = uiPrefs.keySize;
+  ksW.value = uiPrefs.keySize;
+  optKeyH.value = uiPrefs.keyH;
+  ksH.value = uiPrefs.keyH;
+  if (typeof updatePanBar === 'function') updatePanBar();
+}
+[[optKeySize, 'keySize'], [ksW, 'keySize'], [optKeyH, 'keyH'], [ksH, 'keyH']].forEach(([input, pref]) => {
+  input.addEventListener('input', () => {
+    uiPrefs[pref] = Number(input.value);
+    saveUiPrefs();
+    applyKeySize();
+  });
+});
 applyUiPrefs();
 
 /* ---------- Mode touches seules + taille des touches ---------- */
@@ -1208,12 +1230,6 @@ document.getElementById('keysQuick').addEventListener('click', () => {
   uiPrefs.keysOnly = true;
   saveUiPrefs();
   applyUiPrefs();
-});
-optKeySize.addEventListener('input', () => {
-  uiPrefs.keySize = Number(optKeySize.value);
-  saveUiPrefs();
-  document.documentElement.style.setProperty('--key-zoom', uiPrefs.keySize / 100);
-  updatePanBar(); // le débordement horizontal a changé
 });
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });

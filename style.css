@@ -332,9 +332,9 @@ body {
 
 .piano {
   position: relative;
-  height: calc(clamp(150px, 26vw, 260px) * var(--key-zoom, 1));
+  height: calc(clamp(150px, 26vw, 260px) * var(--key-h, 1));
   /* si le zoom rend le clavier plus étroit que l'écran, il s'étire pour le remplir */
-  min-width: max(calc(940px * var(--key-zoom, 1)), 100%);
+  min-width: max(calc(940px * var(--key-w, 1)), 100%);
   border-radius: 0 0 8px 8px;
   /* feutre rouge au-dessus des touches */
   border-top: 7px solid var(--felt);
@@ -788,11 +788,13 @@ body.keys-only .sheet,
 body.keys-only .hint { display: none !important; }
 body.keys-only .stage { padding: 6px; justify-content: center; }
 body.keys-only .piano-shell { width: 100%; padding: 6px 6px 8px; }
-/* touches seules : le clavier prend TOUTE la hauteur disponible */
-body.keys-only .piano { height: calc(100dvh - 74px); }
+/* touches seules : le clavier prend la hauteur disponible × réglage hauteur */
+body.keys-only .piano { height: calc((100dvh - 74px) * min(var(--key-h, 1), 1)); }
+body.keys-only .piano-scroll { display: flex; align-items: flex-end; }
+body.keys-only .piano { width: 100%; }
 body.keys-only .pan-bar:not([hidden]) { margin-top: 6px; }
 /* en rotation CSS, la hauteur disponible est la largeur physique de l'écran */
-body.css-landscape.keys-only .piano { height: calc(100dvw - 74px); }
+body.css-landscape.keys-only .piano { height: calc((100dvw - 74px) * min(var(--key-h, 1), 1)); }
 
 /* ===== Ascenseur horizontal du clavier ===== */
 .pan-bar {
@@ -802,6 +804,28 @@ body.css-landscape.keys-only .piano { height: calc(100dvw - 74px); }
   accent-color: var(--accent);
   cursor: pointer;
   touch-action: none;
+}
+
+/* Mini-curseurs flottants largeur/hauteur — mode touches seules sur mobile */
+.keys-size {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 120;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(26, 29, 38, .78);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+}
+.keys-size label { display: flex; align-items: center; gap: 8px; }
+.keys-size svg { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
+.keys-size input[type="range"] { width: 110px; accent-color: var(--accent); }
+@media (pointer: coarse) {
+  body.keys-only .keys-size { display: flex; }
 }
 
 /* Bouton flottant « Pleine touche » — mobile uniquement */

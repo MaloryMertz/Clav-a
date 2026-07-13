@@ -85,7 +85,8 @@
         <label><input type="checkbox" id="optHint" checked> Ligne d'aide</label>
         <label><input type="checkbox" id="optSig" checked> Signature</label>
         <label><input type="checkbox" id="optKeysOnly"> Touches seules</label>
-        <label class="sp-slider mobile-only"><span>Taille touches</span><input type="range" id="optKeySize" min="35" max="180" value="100" aria-label="Taille des touches"></label>
+        <label class="sp-slider mobile-only"><span>Largeur touches</span><input type="range" id="optKeySize" min="35" max="180" value="100" aria-label="Largeur des touches"></label>
+        <label class="sp-slider mobile-only"><span>Hauteur touches</span><input type="range" id="optKeyH" min="40" max="130" value="100" aria-label="Hauteur des touches"></label>
         <p class="sp-title">Son</p>
         <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
           <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">
@@ -213,6 +214,17 @@
   </svg>
   Pleine touche
 </button>
+
+<div class="keys-size" id="keysSize" aria-label="Taille des touches">
+  <label title="Largeur des touches">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
+    <input id="ksW" type="range" min="35" max="180" value="100" aria-label="Largeur des touches">
+  </label>
+  <label title="Hauteur des touches">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>
+    <input id="ksH" type="range" min="40" max="100" value="100" aria-label="Hauteur des touches">
+  </label>
+</div>
 
 <button id="keysOnlyExit" class="keys-exit" type="button" hidden aria-label="Quitter le mode touches seules" title="Quitter le mode touches seules">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
