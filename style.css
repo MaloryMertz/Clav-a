@@ -803,9 +803,40 @@ body.css-landscape {
   min-height: 0; /* sans ça, le min-height:100dvh du body fausse la rotation */
   transform: rotate(90deg);
   transform-origin: left top;
-  overflow-y: auto;
+  overflow: hidden; /* pas de défilement : en roté, les gestes ne suivent plus les axes */
 }
 body.css-landscape .fx { display: none; } /* le canvas ne suit pas la rotation */
+
+/* En roté, tout doit tenir à l'écran sans défiler : on allège le décor,
+   le piano remplit l'espace restant (flex) et le panneau partition se
+   place À CÔTÉ du piano (l'écran roté est large). */
+body.css-landscape .hint,
+body.css-landscape .piano-top,
+body.css-landscape .note-display,
+body.css-landscape .brand h1 { display: none !important; }
+body.css-landscape .topbar { padding: 5px 10px; gap: 8px; }
+body.css-landscape .stage { padding: 8px; gap: 8px; min-height: 0; }
+body.css-landscape .arena { flex: 1; min-height: 0; }
+body.css-landscape .piano-shell {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+body.css-landscape .piano-scroll { flex: 1; min-height: 0; }
+body.css-landscape .piano { height: 100%; }
+body.css-landscape .arena { flex-direction: row !important; align-items: stretch; }
+body.css-landscape .arena .sheet:not([hidden]) {
+  width: 44% !important;
+  min-width: 240px;
+  max-width: 50%;
+  min-height: 0; /* accepte de rétrécir : le contenu défile à l'intérieur */
+  resize: none;
+  overflow-y: auto;
+}
+body.css-landscape .arena .sheet textarea { min-height: 70px; }
 
 /* ===== Incitation à la rotation (téléphone en portrait) ===== */
 .rotate-hint {
