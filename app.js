@@ -1482,6 +1482,14 @@ updateRotateHint();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+/* Stockage persistant : protège la bibliothèque du nettoyage automatique */
+navigator.storage?.persist?.().catch(() => {});
+
+/* Numéro de version (lu depuis le cache du service worker) dans les réglages */
+caches.keys().then(keys => {
+  const v = keys.filter(k => k.startsWith('piano-v')).sort().pop();
+  if (v) document.getElementById('spVersion').textContent = `Clavéa — ${v.replace('piano-', '')}`;
+}).catch(() => {});
 const offlineBadge = document.getElementById('offlineBadge');
 function updateOnline() { offlineBadge.hidden = navigator.onLine; }
 window.addEventListener('online', updateOnline);

@@ -193,6 +193,14 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
 }
+.sp-version {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: .04em;
+}
+
 /* Indicateur « il y a plus de réglages en bas » */
 .sp-more {
   display: none;
