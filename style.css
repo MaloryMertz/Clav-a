@@ -310,7 +310,10 @@ body {
 /* En portrait sur petit écran, pas la place pour un panneau latéral :
    tout passe en colonne. En paysage, le choix de dock est respecté. */
 @media (max-width: 900px) and (orientation: portrait) {
+  /* pas de panneau latéral en portrait : gauche/droite/bas → sous le piano,
+     mais on respecte le dock « haut » (panneau au-dessus du piano) */
   .arena { flex-direction: column !important; }
+  .arena[data-dock="top"] { flex-direction: column-reverse !important; }
   .arena .sheet { width: 100% !important; resize: none; }
 }
 

@@ -1292,7 +1292,15 @@ function setDock(dock) {
   try { localStorage.setItem('piano.dock', dock); } catch (_) {}
 }
 dockButtons.forEach(b => b.addEventListener('click', () => setDock(b.dataset.dock)));
-setDock(localStorage.getItem('piano.dock') || 'bottom');
+/* défaut : en haut sur mobile (panneau au-dessus du piano), en bas sur PC */
+const phoneDefault = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 800;
+let startDock = localStorage.getItem('piano.dock') || (phoneDefault ? 'top' : 'bottom');
+/* migration unique sur téléphone : bascule le panneau au-dessus une fois */
+if (phoneDefault && !localStorage.getItem('piano.dockV2')) {
+  startDock = 'top';
+  try { localStorage.setItem('piano.dockV2', '1'); } catch (_) {}
+}
+setDock(startDock);
 
 function setSheetVisible(show) {
   sheetPanel.hidden = !show;
@@ -1318,8 +1326,10 @@ const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, cascade: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
+/* Migration unique : le panneau partition est désormais ouvert par défaut */
+if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
 }
@@ -1641,12 +1651,15 @@ const rotateFs = document.getElementById('rotateFs');
 const rotateDismiss = document.getElementById('rotateDismiss');
 const isPhone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 800;
 
+/* Drapeau en mémoire (pas de persistance) : la question revient à chaque
+   ouverture de la page, jamais mémorisée dans le cache/session. */
+let rotateDismissed = false;
 function updateRotateHint() {
   const portrait = window.innerHeight > window.innerWidth;
-  rotateHint.hidden = !(isPhone && portrait && !sessionStorage.getItem('piano.rotateDismissed'));
+  rotateHint.hidden = !(isPhone && portrait && !rotateDismissed);
 }
 rotateDismiss.addEventListener('click', () => {
-  sessionStorage.setItem('piano.rotateDismissed', '1');
+  rotateDismissed = true;
   updateRotateHint();
 });
 function setCssLandscape(on) {
@@ -1662,7 +1675,7 @@ rotateFs.addEventListener('click', async () => {
     locked = true;
   } catch (_) { /* iOS ou verrouillage refusé */ }
   if (!locked) setCssLandscape(true); // plan B : on tourne toute l'app à 90° en CSS
-  sessionStorage.setItem('piano.rotateDismissed', '1');
+  rotateDismissed = true;
   updateRotateHint();
 });
 
