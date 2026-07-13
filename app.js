@@ -555,56 +555,157 @@ function parseSheetTimed(text) {
   return steps;
 }
 
-function autoTick() {
-  let step = autoSteps[autoIdx++];
-  while (step && step.mul !== undefined) { // les directives ne consomment pas de temps
-    autoMul = step.mul;
-    step = autoSteps[autoIdx++];
+/* ---------- Cascade : les notes à jouer tombent vers leur touche ---------- */
+const cascadeCanvas = document.getElementById('cascade');
+const cascadeCtx = cascadeCanvas.getContext('2d');
+let cascadeActive = false;
+
+function cascadeOn(on) {
+  cascadeActive = on && uiPrefs.cascade !== false;
+  cascadeCanvas.hidden = !cascadeActive;
+  if (cascadeActive) sizeCascade();
+  else cascadeCtx.clearRect(0, 0, cascadeCanvas.width, cascadeCanvas.height);
+}
+function sizeCascade() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cascadeCanvas.clientWidth || pianoEl.getBoundingClientRect().width;
+  const h = cascadeCanvas.clientHeight;
+  cascadeCanvas.width = Math.round(w * dpr);
+  cascadeCanvas.height = Math.round(h * dpr);
+  cascadeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function cascadeRoundRect(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, Math.max(0, h / 2));
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+function drawCascade() {
+  if (!cascadeActive) return;
+  const W = cascadeCanvas.clientWidth, H = cascadeCanvas.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  if (cascadeCanvas.width !== Math.round(W * dpr)) sizeCascade();
+  cascadeCtx.clearRect(0, 0, W, H);
+  const pianoW = pianoEl.getBoundingClientRect().width || W;
+  const scale = W / pianoW;
+  const bh = Math.max(12, H * 0.18);
+  for (let k = autoNextBeat; k < autoTimeline.length; k++) {
+    const rel = k - autoHead;              // pas d'avance (>0)
+    if (rel > CASCADE_LEAD) break;
+    const ev = autoTimeline[k];
+    if (!ev || !ev.notes) continue;
+    const y = (1 - rel / CASCADE_LEAD) * H; // haut → touche
+    const fade = rel > CASCADE_LEAD - 0.6 ? Math.max(0, (CASCADE_LEAD - rel) / 0.6) : 1;
+    for (const midi of ev.notes) {
+      const el = keyEls[midi];
+      if (!el) continue;
+      const x = el.offsetLeft * scale, w = el.offsetWidth * scale;
+      const hue = 40 + ((midi - FIRST_MIDI) / (LAST_MIDI - FIRST_MIDI)) * 180;
+      const top = Math.max(0, y - bh);
+      cascadeCtx.globalAlpha = fade;
+      const grad = cascadeCtx.createLinearGradient(0, top, 0, y);
+      grad.addColorStop(0, `hsla(${hue},90%,60%,.15)`);
+      grad.addColorStop(1, `hsla(${hue},95%,66%,.95)`);
+      cascadeCtx.fillStyle = grad;
+      const pad = Math.min(3, w * 0.14);
+      cascadeRoundRect(cascadeCtx, x + pad, top, w - pad * 2, y - top, 3);
+      cascadeCtx.fill();
+    }
   }
-  if (!step) { stopAuto(true); return; }
-  autoPlayed++;
-  const tick = 1000 / (Number(tempoEl.value) * autoMul); // curseur × directive
-  if (step.notes) {
-    step.notes.forEach(m => noteOn(m, 0.85));
-    setTimeout(() => step.notes.forEach(m => noteOff(m)), tick * 0.92);
-    sheetProgress.textContent = `auto ${autoPlayed} / ${autoPlayable}` + (autoMul !== 1 ? ` ×${autoMul}` : '');
+  cascadeCtx.globalAlpha = 1;
+}
+
+/* Moteur Auto à horloge musicale : la lecture avance en « pas » via
+   requestAnimationFrame. La même horloge pilote le son ET la cascade
+   (notes qui tombent), donc les deux restent toujours synchronisés.
+   autoTimeline = un pas par note/silence (les directives {xN} deviennent
+   un facteur de vitesse rattaché au pas). */
+const CASCADE_LEAD = 3.6; // nombre de pas visibles d'avance dans la cascade
+let autoTimeline = [];
+let autoHead = 0;         // position de lecture en pas (flottant)
+let autoNextBeat = 0;     // prochain pas à déclencher
+let autoRaf = null;
+let autoLastTs = 0;
+
+function buildTimeline(text) {
+  const steps = parseSheetTimed(text);
+  const tl = [];
+  let mul = 1;
+  for (const s of steps) {
+    if (s.mul !== undefined) { mul = s.mul; continue; }
+    tl.push({ notes: s.notes || null, mul });
   }
-  autoTimer = setTimeout(autoTick, tick);
+  return tl;
+}
+
+function autoFrame(ts) {
+  const dt = Math.min(0.05, (ts - autoLastTs) / 1000);
+  autoLastTs = ts;
+  const cur = autoTimeline[Math.min(Math.max(0, Math.floor(autoHead)), autoTimeline.length - 1)] || { mul: 1 };
+  autoHead += dt * Number(tempoEl.value) * cur.mul;
+
+  while (autoNextBeat < autoTimeline.length && autoNextBeat <= autoHead) {
+    const ev = autoTimeline[autoNextBeat++];
+    autoPlayed++;
+    if (ev.notes) {
+      ev.notes.forEach(m => noteOn(m, 0.85));
+      const dur = 1000 / (Number(tempoEl.value) * ev.mul);
+      const notes = ev.notes;
+      setTimeout(() => notes.forEach(m => noteOff(m)), dur * 0.92);
+    }
+    sheetProgress.textContent = `auto ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`
+      + (cur.mul !== 1 ? ` ×${cur.mul}` : '');
+  }
+
+  drawCascade();
+
+  if (autoNextBeat >= autoTimeline.length && autoHead >= autoTimeline.length) {
+    stopAuto(true);
+    return;
+  }
+  autoRaf = requestAnimationFrame(autoFrame);
 }
 
 function startAuto() {
   stopSheet(false);
   stopAuto(false);
-  autoSteps = parseSheetTimed(sheetInput.value);
-  if (!autoSteps.some(s => s.notes)) {
+  autoTimeline = buildTimeline(sheetInput.value);
+  if (!autoTimeline.some(s => s.notes)) {
     sheetProgress.classList.remove('done');
     sheetProgress.textContent = 'Aucune note reconnue dans la partition.';
     return;
   }
-  autoIdx = 0;
-  autoMul = 1;
+  autoHead = -CASCADE_LEAD; // les premières notes tombent avant d'être jouées
+  autoNextBeat = 0;
   autoPlayed = 0;
-  autoPlayable = autoSteps.filter(s => s.mul === undefined).length;
+  autoPlayable = autoTimeline.length;
   autoPaused = false;
   setPauseUi(false);
   sheetStart.disabled = true;
   autoStart.disabled = true;
   sheetStop.disabled = false;
   autoPause.disabled = false;
+  cascadeOn(true);
   resumeCtx();
-  autoTick();
+  autoLastTs = performance.now();
+  autoRaf = requestAnimationFrame(autoFrame);
 }
 
 function stopAuto(finished = false) {
-  if (autoTimer === null && !autoPaused && !finished) return;
-  clearTimeout(autoTimer);
-  autoTimer = null;
+  if (autoRaf === null && !autoPaused && !finished) return;
+  if (autoRaf !== null) cancelAnimationFrame(autoRaf);
+  autoRaf = null;
   autoPaused = false;
   setPauseUi(false);
   sheetStart.disabled = false;
   autoStart.disabled = false;
   sheetStop.disabled = true;
   autoPause.disabled = true;
+  cascadeOn(false);
   if (finished) {
     sheetProgress.classList.add('done');
     sheetProgress.textContent = 'Partition terminée.';
@@ -616,13 +717,14 @@ autoPause.addEventListener('click', () => {
     autoPaused = false;
     setPauseUi(false);
     resumeCtx();
-    autoTick();
-  } else if (autoTimer !== null) {  // mettre en pause
-    clearTimeout(autoTimer);
-    autoTimer = null;
+    autoLastTs = performance.now();
+    autoRaf = requestAnimationFrame(autoFrame);
+  } else if (autoRaf !== null) {    // mettre en pause
+    cancelAnimationFrame(autoRaf);
+    autoRaf = null;
     autoPaused = true;
     setPauseUi(true);
-    sheetProgress.textContent = `pause ${autoPlayed} / ${autoPlayable}`;
+    sheetProgress.textContent = `pause ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`;
   }
 });
 
@@ -1161,12 +1263,12 @@ const optHint = document.getElementById('optHint');
 const optSig = document.getElementById('optSig');
 const optReverb = document.getElementById('optReverb');
 const optKeysOnly = document.getElementById('optKeysOnly');
-const optKeySize = document.getElementById('optKeySize');
+const optCascade = document.getElementById('optCascade');
 const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
+let uiPrefs = { sheet: false, hint: true, sig: true, fx: true, cascade: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
@@ -1181,6 +1283,7 @@ function applyUiPrefs() {
   optSig.checked = uiPrefs.sig;
   optSheet.checked = uiPrefs.sheet;
   optFx.checked = uiPrefs.fx;
+  optCascade.checked = uiPrefs.cascade !== false;
   optReverb.value = uiPrefs.reverb;
   setReverb(uiPrefs.reverb);
   optKeysOnly.checked = uiPrefs.keysOnly;
@@ -1189,22 +1292,20 @@ function applyUiPrefs() {
   applyKeySize();
 }
 
-/* Taille des touches : largeur et hauteur indépendantes, quatre curseurs synchronisés
-   (réglages + mini-panneau flottant du mode touches seules) */
-const optKeyH = document.getElementById('optKeyH');
+/* Taille des touches : largeur et hauteur indépendantes.
+   Réglage uniquement via les mini-curseurs flottants du mode Pleine touche. */
+let panReady = false; // vrai une fois l'ascenseur du clavier initialisé
 const ksW = document.getElementById('ksW');
 const ksH = document.getElementById('ksH');
 
 function applyKeySize() {
   document.documentElement.style.setProperty('--key-w', uiPrefs.keySize / 100);
   document.documentElement.style.setProperty('--key-h', uiPrefs.keyH / 100);
-  optKeySize.value = uiPrefs.keySize;
   ksW.value = uiPrefs.keySize;
-  optKeyH.value = uiPrefs.keyH;
   ksH.value = uiPrefs.keyH;
-  if (typeof updatePanBar === 'function') updatePanBar();
+  if (panReady) updatePanBar(); // pas encore initialisé au tout premier applyUiPrefs()
 }
-[[optKeySize, 'keySize'], [ksW, 'keySize'], [optKeyH, 'keyH'], [ksH, 'keyH']].forEach(([input, pref]) => {
+[[ksW, 'keySize'], [ksH, 'keyH']].forEach(([input, pref]) => {
   input.addEventListener('input', () => {
     uiPrefs[pref] = Number(input.value);
     saveUiPrefs();
@@ -1233,6 +1334,11 @@ document.getElementById('keysQuick').addEventListener('click', () => {
 });
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });
+optCascade.addEventListener('change', () => {
+  uiPrefs.cascade = optCascade.checked;
+  saveUiPrefs();
+  cascadeOn(autoRaf !== null || autoPaused); // reflète l'état pendant une lecture
+});
 
 /* ---------- Réverb ---------- */
 optReverb.addEventListener('input', () => {
@@ -1448,6 +1554,7 @@ function fxLoop(ts) {
 /* ---------- Ascenseur horizontal du clavier ---------- */
 const panBar = document.getElementById('panBar');
 const pianoScroll = document.getElementById('pianoScroll');
+panReady = true; // l'ascenseur peut désormais être recalculé
 
 function updatePanBar() {
   const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;

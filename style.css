@@ -167,6 +167,13 @@ body {
   text-transform: uppercase;
   color: var(--text-dim);
 }
+.settings-pop .sp-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+.settings-pop .sp-note strong { color: var(--accent); }
 .settings-pop label {
   display: flex;
   align-items: center;
@@ -329,6 +336,20 @@ body {
 }
 
 .piano-scroll { overflow-x: auto; border-radius: 8px; }
+
+/* Bande « cascade » : les notes à jouer tombent vers leur touche */
+.cascade {
+  display: block;
+  width: 100%;
+  min-width: max(calc(940px * var(--key-w, 1)), 100%);
+  height: clamp(80px, 14vw, 130px);
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0) 0%, rgba(8, 10, 16, .35) 100%);
+}
+.cascade[hidden] { display: none; }
+/* espace compté : pas de cascade en touches seules ni en paysage roté */
+body.keys-only .cascade,
+body.css-landscape .cascade { display: none !important; }
 
 .piano {
   position: relative;

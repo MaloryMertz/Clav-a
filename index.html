@@ -82,11 +82,11 @@
         <p class="sp-title">Affichage</p>
         <label><input type="checkbox" id="optSheet"> Panneau partition</label>
         <label><input type="checkbox" id="optFx" checked> Feu d'artifice de notes</label>
+        <label><input type="checkbox" id="optCascade" checked> Notes qui tombent (guide)</label>
         <label><input type="checkbox" id="optHint" checked> Ligne d'aide</label>
         <label><input type="checkbox" id="optSig" checked> Signature</label>
         <label><input type="checkbox" id="optKeysOnly"> Touches seules</label>
-        <label class="sp-slider mobile-only"><span>Largeur touches</span><input type="range" id="optKeySize" min="35" max="180" value="100" aria-label="Largeur des touches"></label>
-        <label class="sp-slider mobile-only"><span>Hauteur touches</span><input type="range" id="optKeyH" min="40" max="130" value="100" aria-label="Hauteur des touches"></label>
+        <p class="sp-note mobile-only">La taille des touches se règle dans le mode <strong>Pleine touche</strong>.</p>
         <p class="sp-title">Son</p>
         <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
           <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">
@@ -117,6 +117,7 @@
         <span class="brand-name" id="signature">Malory M.</span>
       </div>
       <div class="piano-scroll" id="pianoScroll">
+        <canvas class="cascade" id="cascade" hidden aria-hidden="true"></canvas>
         <div class="piano" id="piano" aria-label="Clavier de piano, 61 touches de Do2 à Do7"></div>
       </div>
       <input type="range" id="panBar" class="pan-bar" min="0" max="100" value="50" hidden aria-label="Faire défiler le clavier vers la gauche ou la droite">
