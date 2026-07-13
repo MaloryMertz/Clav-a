@@ -867,7 +867,8 @@ body.keys-only .key.black.down {
 .keys-size input[type="range"] { width: 110px; accent-color: var(--accent); }
 @media (pointer: coarse) {
   body.keys-only .keys-size,
-  body.css-landscape .keys-size { display: flex; }
+  body.css-landscape .keys-size,
+  body.fs-active .keys-size { display: flex; }
 }
 
 /* Bouton flottant « Pleine touche » — mobile uniquement */

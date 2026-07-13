@@ -1819,6 +1819,13 @@ window.addEventListener('resize', () => {
 });
 updateRotateHint();
 
+/* Plein écran natif (Android) : on marque le body pour afficher les curseurs
+   de taille + recalculer l'ascenseur (sinon aucun contrôle en plein écran). */
+document.addEventListener('fullscreenchange', () => {
+  document.body.classList.toggle('fs-active', !!document.fullscreenElement);
+  if (typeof updatePanBar === 'function') updatePanBar();
+});
+
 /* ---------- PWA : service worker + indicateur hors-ligne ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
