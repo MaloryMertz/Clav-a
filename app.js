@@ -76,14 +76,22 @@ const dryGain = ctx.createGain();
 const wetGain = ctx.createGain();
 wetGain.gain.value = 0.22;
 
-/* Limiteur en fin de chaîne : empêche l'écrêtage (grésillement) sur les
-   accords denses en rabattant les crêtes au-dessus du seuil. */
+/* Limiteur : rabat les crêtes fortes sur les accords denses. */
 const limiter = ctx.createDynamicsCompressor();
-limiter.threshold.value = -1.5;
+limiter.threshold.value = -3;
 limiter.knee.value = 0;
 limiter.ratio.value = 20;
 limiter.attack.value = 0.002;
-limiter.release.value = 0.08;
+limiter.release.value = 0.1;
+
+/* Écrêteur doux (WaveShaper tanh) : sample-exact, il est IMPOSSIBLE de
+   saturer/grésiller — les crêtes qui échappent au limiteur sont arrondies
+   au lieu d'être tronquées brutalement (source des « clics »). */
+const softClip = ctx.createWaveShaper();
+const _curve = new Float32Array(1024);
+for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; _curve[i] = Math.tanh(x * 1.5); }
+softClip.curve = _curve;
+softClip.oversample = '2x';
 
 masterGain.connect(dryGain);
 dryGain.connect(compressor);
@@ -91,8 +99,9 @@ masterGain.connect(convolver);
 convolver.connect(wetGain);
 wetGain.connect(compressor);
 compressor.connect(limiter);
-limiter.connect(ctx.destination);
-masterGain.gain.value = 0.7;
+limiter.connect(softClip);
+softClip.connect(ctx.destination);
+masterGain.gain.value = 0.6;
 
 function setReverb(pct) { // 0..100
   wetGain.gain.setTargetAtTime(pct / 100 * 0.9, ctx.currentTime, 0.05);
@@ -168,12 +177,22 @@ function noteOn(midi, velocity = 0.85) {
   sheetNotePlayed(midi);
 }
 
+const MAX_SUSTAINED = 24; // au-delà, on relâche les plus anciennes (anti-saturation/CPU)
+
 function noteOff(midi) {
   const voice = activeVoices.get(midi);
   setKeyDown(midi, false);
   if (!voice) return;
   activeVoices.delete(midi);
-  if (sustainOn()) { sustainedVoices.add(voice); return; }
+  if (sustainOn()) {
+    sustainedVoices.add(voice);
+    while (sustainedVoices.size > MAX_SUSTAINED) {
+      const oldest = sustainedVoices.values().next().value; // Set = ordre d'insertion
+      sustainedVoices.delete(oldest);
+      releaseVoice(oldest, 0.25);
+    }
+    return;
+  }
   releaseVoice(voice, 0.22);
 }
 
