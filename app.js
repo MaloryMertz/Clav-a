@@ -759,12 +759,20 @@ function loadLib() {
 function saveLibData(lib) {
   try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (_) {}
 }
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+let folderLib = {}; // partitions chargées depuis le dossier GitHub /partitions
+
 function refreshLibSelect(selected = '') {
   const lib = loadLib();
-  libSelect.innerHTML = '<option value="">— Bibliothèque —</option>' +
-    Object.keys(lib).sort((a, b) => a.localeCompare(b, 'fr'))
-      .map(n => `<option${n === selected ? ' selected' : ''}>${n.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`)
-      .join('');
+  const opt = (n, pref) => `<option value="${pref}${esc(n)}"${(pref + n) === selected ? ' selected' : ''}>${esc(n)}</option>`;
+  let html = '<option value="">— Bibliothèque —</option>' +
+    Object.keys(lib).sort((a, b) => a.localeCompare(b, 'fr')).map(n => opt(n, '')).join('');
+  const fnames = Object.keys(folderLib);
+  if (fnames.length) {
+    html += '<optgroup label="Dossier en ligne">' +
+      fnames.sort((a, b) => a.localeCompare(b, 'fr')).map(n => opt(n, '@')).join('') + '</optgroup>';
+  }
+  libSelect.innerHTML = html;
 }
 /* Migration : l'ancienne transcription maison du Canon est remplacée par la
    version MIDI. On ne supprime que si elle n'a pas été modifiée par l'utilisateur. */
@@ -785,11 +793,53 @@ function refreshLibSelect(selected = '') {
 refreshLibSelect();
 
 libSelect.addEventListener('change', () => {
-  const lib = loadLib();
-  if (libSelect.value && lib[libSelect.value] !== undefined) {
-    sheetInput.value = lib[libSelect.value]; // n'interrompt pas la lecture en cours
+  const v = libSelect.value;
+  if (!v) return;
+  if (v[0] === '@') {                       // entrée du dossier en ligne
+    const name = v.slice(1);
+    if (folderLib[name] !== undefined) sheetInput.value = folderLib[name];
+  } else {
+    const lib = loadLib();
+    if (lib[v] !== undefined) sheetInput.value = lib[v]; // n'interrompt pas la lecture
   }
 });
+
+/* ---------- Dossier de partitions en ligne (GitHub /partitions) ---------- */
+const FOLDER_REPO = 'MaloryMertz/Clav-a';   // owner/repo hébergeant le dossier
+const FOLDER_PATH = 'partitions';
+const FOLDER_CACHE = 'piano.folderLib';
+
+/* charge d'abord le cache (hors-ligne), puis rafraîchit depuis GitHub */
+try { folderLib = JSON.parse(localStorage.getItem(FOLDER_CACHE) || '{}') || {}; } catch (_) { folderLib = {}; }
+
+async function loadFolderLib() {
+  let list;
+  try {
+    const api = `https://api.github.com/repos/${FOLDER_REPO}/contents/${FOLDER_PATH}`;
+    list = await (await fetchWithTimeoutSafe(api, 8000)).json();
+  } catch (_) { return; } // hors-ligne ou dossier absent : on garde le cache
+  if (!Array.isArray(list)) return;
+  const next = {};
+  await Promise.all(list.map(async f => {
+    if (f.type !== 'file' || !f.download_url) return;
+    const m = f.name.match(/^(.+)\.(txt|json)$/i);
+    if (!m) return;
+    let txt;
+    try { txt = await (await fetchWithTimeoutSafe(f.download_url, 8000)).text(); } catch (_) { return; }
+    if (m[2].toLowerCase() === 'json') {
+      try {
+        const obj = JSON.parse(txt);
+        for (const [k, val] of Object.entries(obj)) if (typeof val === 'string') next[k] = val;
+      } catch (_) {}
+    } else {
+      next[m[1]] = txt.replace(/\s+$/, '');
+    }
+  }));
+  folderLib = next;
+  try { localStorage.setItem(FOLDER_CACHE, JSON.stringify(next)); } catch (_) {}
+  refreshLibSelect(libSelect.value);
+}
+loadFolderLib();
 /* Enregistrement : barre de saisie intégrée, non bloquante (le son continue) */
 const saveRow = document.getElementById('saveRow');
 const saveName = document.getElementById('saveName');
