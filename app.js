@@ -1429,6 +1429,17 @@ window.addEventListener('resize', updatePanBar);
 pianoScroll.scrollLeft = (pianoScroll.scrollWidth - pianoScroll.clientWidth) / 2;
 updatePanBar();
 
+/* ---------- Navigateur intégré (Instagram, Facebook, Messenger…) ---------- */
+const iabBanner = document.getElementById('iabBanner');
+const isInAppBrowser = /Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger|Snapchat|TikTok/i.test(navigator.userAgent);
+if (isInAppBrowser && !localStorage.getItem('piano.iabDismissed')) {
+  iabBanner.hidden = false;
+}
+document.getElementById('iabDismiss').addEventListener('click', () => {
+  iabBanner.hidden = true;
+  try { localStorage.setItem('piano.iabDismissed', '1'); } catch (_) {}
+});
+
 /* ---------- Téléphone : incitation paysage + verrouillage d'orientation ---------- */
 const rotateHint = document.getElementById('rotateHint');
 const rotateFs = document.getElementById('rotateFs');
