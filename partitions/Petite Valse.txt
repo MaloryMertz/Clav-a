@@ -1,0 +1,14 @@
+8 [tuo] [tuo] 5 [yoa] [yoa]
+6 [tep] [tep] 4 [qti] [qti]
+8 [tuo] [tuo] 5 [yoa] [yoa]
+[4qt] [qti] [qti] [5wy] [yoa] [yoa]
+
+8 [uo] s 5 [oa] d
+6 [up] s 4 [ip] p
+8 [uo] f 5 [oa] d
+[8t] s a [5w] o y
+
+8 [uo] s 5 [oa] d
+6 [up] f 4 [ip] g
+[8t] f d [5r] d a
+[8tuos]  [8tuos]

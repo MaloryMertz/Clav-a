@@ -76,13 +76,23 @@ const dryGain = ctx.createGain();
 const wetGain = ctx.createGain();
 wetGain.gain.value = 0.22;
 
+/* Limiteur en fin de chaîne : empêche l'écrêtage (grésillement) sur les
+   accords denses en rabattant les crêtes au-dessus du seuil. */
+const limiter = ctx.createDynamicsCompressor();
+limiter.threshold.value = -1.5;
+limiter.knee.value = 0;
+limiter.ratio.value = 20;
+limiter.attack.value = 0.002;
+limiter.release.value = 0.08;
+
 masterGain.connect(dryGain);
 dryGain.connect(compressor);
 masterGain.connect(convolver);
 convolver.connect(wetGain);
 wetGain.connect(compressor);
-compressor.connect(ctx.destination);
-masterGain.gain.value = 0.8;
+compressor.connect(limiter);
+limiter.connect(ctx.destination);
+masterGain.gain.value = 0.7;
 
 function setReverb(pct) { // 0..100
   wetGain.gain.setTargetAtTime(pct / 100 * 0.9, ctx.currentTime, 0.05);
@@ -141,7 +151,10 @@ function noteOn(midi, velocity = 0.85) {
   src.buffer = s.buffer;
   src.playbackRate.value = Math.pow(2, (sounding - s.midi) / 12);
   const gain = ctx.createGain();
-  gain.gain.value = Math.max(0.05, Math.min(1, velocity));
+  const vel = Math.max(0.05, Math.min(1, velocity));
+  const t0 = ctx.currentTime;
+  gain.gain.setValueAtTime(0, t0);                     // rampe d'attaque courte
+  gain.gain.linearRampToValueAtTime(vel, t0 + 0.005);  // évite le clic de départ
   src.connect(gain);
   gain.connect(masterGain);
   src.start();

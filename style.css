@@ -317,6 +317,14 @@ body {
   .arena .sheet { width: 100% !important; resize: none; }
 }
 
+/* Téléphone en paysage (hauteur courte) : tout le clavier tient à l'écran,
+   les 61 touches sont visibles sans avoir à faire défiler. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .piano, .cascade { min-width: 100% !important; }
+}
+body.css-landscape .piano,
+body.css-landscape .cascade { min-width: 100% !important; }
+
 .fx {
   position: absolute;
   inset: 0;
