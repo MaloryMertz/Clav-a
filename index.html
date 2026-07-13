@@ -88,6 +88,7 @@
         <label><input type="checkbox" id="optSig" checked> Signature</label>
         <label><input type="checkbox" id="optKeysOnly"> Touches seules</label>
         <p class="sp-note mobile-only">La taille des touches se règle dans le mode <strong>Pleine touche</strong>.</p>
+        <label class="sp-slider mobile-only" title="Un doigt doit glisser un peu avant de changer de note — évite les fausses notes"><span>Tolérance tactile</span><input type="range" id="optTouchTol" min="0" max="40" value="16" aria-label="Tolérance tactile"></label>
         <p class="sp-title">Son</p>
         <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
           <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">

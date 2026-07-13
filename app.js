@@ -341,6 +341,11 @@ function keyFromPoint(x, y) {
   return key ? parseInt(key.dataset.midi, 10) : null;
 }
 
+/* Tolérance tactile : distance (px) qu'un doigt doit parcourir avant qu'un
+   glissement ne change de note. Un petit tremblement reste sur la même touche
+   (moins de fausses notes) ; un vrai glissando fonctionne toujours. */
+const TOUCH_TOL = () => (uiPrefs.touchTol ?? 16);
+
 pianoEl.addEventListener('pointerdown', e => {
   e.preventDefault();
   resumeCtx();
@@ -348,18 +353,24 @@ pianoEl.addEventListener('pointerdown', e => {
   if (midi === null) return;
   const rect = keyEls[midi].getBoundingClientRect();
   const velocity = 0.45 + 0.55 * Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
-  pointerNotes.set(e.pointerId, midi);
+  pointerNotes.set(e.pointerId, { midi, x0: e.clientX, y0: e.clientY, sliding: false, touch: e.pointerType !== 'mouse' });
   noteOn(midi, velocity);
 });
 
 window.addEventListener('pointermove', e => {
-  if (!pointerNotes.has(e.pointerId)) return;
+  const st = pointerNotes.get(e.pointerId);
+  if (!st) return;
+  // zone morte : au tactile, on attend un déplacement franc avant de glisser
+  if (st.touch && !st.sliding) {
+    const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
+    if (dx * dx + dy * dy < TOUCH_TOL() * TOUCH_TOL()) return; // tremblement ignoré
+    st.sliding = true;
+  }
   const midi = keyFromPoint(e.clientX, e.clientY);
-  const current = pointerNotes.get(e.pointerId);
-  if (midi === current) return;
-  noteOff(current);
+  if (midi === st.midi) return;
+  noteOff(st.midi);
   if (midi !== null) {
-    pointerNotes.set(e.pointerId, midi);
+    st.midi = midi;
     noteOn(midi, 0.8);
   } else {
     pointerNotes.delete(e.pointerId);
@@ -367,10 +378,10 @@ window.addEventListener('pointermove', e => {
 });
 
 function endPointer(e) {
-  const midi = pointerNotes.get(e.pointerId);
-  if (midi === undefined) return;
+  const st = pointerNotes.get(e.pointerId);
+  if (!st) return;
   pointerNotes.delete(e.pointerId);
-  noteOff(midi);
+  noteOff(st.midi);
 }
 window.addEventListener('pointerup', endPointer);
 window.addEventListener('pointercancel', endPointer);
@@ -1447,11 +1458,12 @@ const optReverb = document.getElementById('optReverb');
 const optKeysOnly = document.getElementById('optKeysOnly');
 const optCascade = document.getElementById('optCascade');
 const optLight = document.getElementById('optLight');
+const optTouchTol = document.getElementById('optTouchTol');
 const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 16 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 /* Migration unique : le panneau partition est désormais ouvert par défaut */
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
@@ -1470,6 +1482,7 @@ function applyUiPrefs() {
   optFx.checked = uiPrefs.fx;
   optCascade.checked = uiPrefs.cascade !== false;
   optLight.checked = !!uiPrefs.light;
+  optTouchTol.value = uiPrefs.touchTol ?? 16;
   optReverb.value = uiPrefs.reverb;
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb); // mode léger : réverb coupée
   optKeysOnly.checked = uiPrefs.keysOnly;
@@ -1526,6 +1539,7 @@ optLight.addEventListener('change', () => {
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
   cascadeOn(autoSchedTimer !== null || autoPaused); // applique/retire la cascade en cours de lecture
 });
+optTouchTol.addEventListener('input', () => { uiPrefs.touchTol = Number(optTouchTol.value); saveUiPrefs(); });
 optCascade.addEventListener('change', () => {
   uiPrefs.cascade = optCascade.checked;
   saveUiPrefs();
