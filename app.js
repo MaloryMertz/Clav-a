@@ -596,7 +596,7 @@ function cascadeOn(on) {
   else cascadeCtx.clearRect(0, 0, cascadeCanvas.width, cascadeCanvas.height);
 }
 function sizeCascade() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // plafonné (perfs mobile haute densité)
   const w = cascadeCanvas.clientWidth || pianoEl.getBoundingClientRect().width;
   const h = cascadeCanvas.clientHeight;
   cascadeCanvas.width = Math.round(w * dpr);
@@ -616,7 +616,7 @@ function cascadeRoundRect(c, x, y, w, h, r) {
 function drawCascade() {
   if (!cascadeActive) return;
   const W = cascadeCanvas.clientWidth, H = cascadeCanvas.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // plafonné (perfs mobile haute densité)
   if (cascadeCanvas.width !== Math.round(W * dpr)) sizeCascade();
   cascadeCtx.clearRect(0, 0, W, H);
   const pianoW = pianoEl.getBoundingClientRect().width || W;
@@ -1647,7 +1647,7 @@ let fxRunning = false;
 let fxLastTs = 0;
 
 function fxResize() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // plafonné (perfs mobile haute densité)
   const r = fxCanvas.getBoundingClientRect();
   fxCanvas.width = Math.round(r.width * dpr);
   fxCanvas.height = Math.round(r.height * dpr);
@@ -1659,6 +1659,7 @@ fxResize();
 
 function spawnNoteFx(midi) {
   if (!uiPrefs.fx || reducedMotion) return;
+  if (document.body.classList.contains('keys-only')) return; // perfs : pas de fx en Pleine touche
   const key = keyEls[midi];
   if (!key) return;
   const kr = key.getBoundingClientRect();
