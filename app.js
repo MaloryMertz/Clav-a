@@ -644,7 +644,7 @@ const LIB_SEED = {
   'Lumière': `6 e t u p u t e\n4 q t i p i t q\n8 w t u o u t w\n5 w y o d o y w\n\n[6e] t u p s p u t\n[4q] t i p s p i t\n[8w] t u o s o u t\n[5w] y o a d a o y\n\n[6p] f f d s [4s] d f\n[8s] f h f d [5d] s a\n[6p] f f d s [4s] d f\n[8f] d s a p [5o] p a\n\n[6ps] f [ef] d [ps] s [4is] d\n[8ts] f [uf] h [os] f [5yd] d\n[6ps] f [ef] g [ps] h [4is] g\n[8os] f d s [5oa] a p o\n\n6 e t u p u t e\n[4qi] t i p [5wo] o y w\n[6etp]  [6ep]`,
   'Petite Valse': `8 [tuo] [tuo] 5 [yoa] [yoa]\n6 [tep] [tep] 4 [qti] [qti]\n8 [tuo] [tuo] 5 [yoa] [yoa]\n[4qt] [qti] [qti] [5wy] [yoa] [yoa]\n\n8 [uo] s 5 [oa] d\n6 [up] s 4 [ip] p\n8 [uo] f 5 [oa] d\n[8t] s a [5w] o y\n\n8 [uo] s 5 [oa] d\n6 [up] f 4 [ip] g\n[8t] f d [5r] d a\n[8tuos]  [8tuos]`,
   'Clair-Obscur': `[29] y i p y i p\n[29] y i p d p i\n[5E] o P d o P d\n[5E] o P d o P d\n[63] e T u e T u\n[63] e T u p u T\n[29] y i p y i p\n[29] y i p y i p\n\n[29] d d d [5E] d d\n[63] T u p [29] p i\n[29] f f f [5E] d d\n[63] u p y [29] y\n[29yip]`,
-  'Canon en Ré (Pachelbel)': `{x0.5} 9 6 7 $ 5 2 5 6 {x1}\n[9yI] y [6Tu] u [7yI] r [$Te] e\n[5wr] w [2yI] y [5wr] r [6Tu] u\n\n[9IG] y [6Tf] u [7yd] r [$TS] e\n[5ra] w [2Ip] y [5ra] r [6TS] u\n[9Id] y [6TS] u [7ya] r [$Tp] e\n[5wo] w [2yI] 9 [5wo] r [6Tu] u\n\n{x2}\n[9y] I p d [6e] T u p\n[7r] y I a [$Q] e T I\n[5w] r y o [2y] I p d\n[5w] r y o [6e] T u p\n[9d] p I y [6p] u T e\n[7a] I y r [$I] T e Q\n[5o] y r w [2d] p I y\n[5o] y r w [6p] u T e\n\n{x1}\n[9IG] f [6Tf] d [7yd] S [$TS] a\n[5ra] o [2Ip] I [5ra] a [6TS] S\n{x0.5}\n[29yIpd]`,
+  'Canon in D (Pachelbel)': `{vitesse 5}\n9 Q e y 6 0 e T 7 9 Q r $ * Q e\n 5 7 9 w 2 Q e y 5 0 r y 6 0 e T\n [9G] Q e y [6f] 0 e T [7d] 9 Q r [$S] * Q e\n [5a] 7 9 w [2p] Q e y [5a] 0 r y [6S] 0 e T\n [9Id] Q e y [6uS] 0 e T [7ya] 9 Q r [$Tp] * Q e\n [5ro] 7 9 w [2eI] Q e y [5ro] 0 r y [6Tu] 0 e T\n [9y] Q [eyI] Q [6Tp] * [0o] e [7I] 9 [Qry] 9 [$eI] 6 [*u] Q\n [5y] 7 [9r] w [2ey] 6 [9p] Q [5o] 0 [wya] 0 [6Tp] * [0o] e\n [9Id] S [Qd] y [6eT] p [wu] I [7Qy] d [9S] a [$Qp] I [0p] a\n [59o] I [ru] o [2eI] u [Qy] T [50r] p [9o] I [6Tu] [0o] [eI] u\n [9y] 0 [Qd] w [6eS] 0 [eu] w [7Qy] r [eI] w [$Qp] * [Qe] 0\n [59r] 7 [7o] * [29I] * [7d] [6S] [5a] [Qp] [0o] [9I] [6uS] w Q 0\n [9Id] [eG]h[yj] Gh[6j]p[0a]S[ed]fGh[7G] [Qd]\nf[rG] Io[$p]a[9p]o[Qp]Iop[5o] [9a]p[ro]\n Iu[2I]u[6y]u[9I]opa[5o] [9a]p[wa] Sd\n[6p]a[0S]d[Tf]Ghj[9eG] [Qd][wf][eG] [wf][Qd][6ef]S\n[7d][*f][9G][0f][Qd]S[7Qd] [9a][0S][Qd] [Qy][wu][9eI][ro][eI][wu]\n[eI]dSd[5a] [rd][eS][wa] [Qp][0o][9Qp][0o][9I][0o][Qp][wa]\n[eS][rd][5a] [rd][eS][rd] [eS][wa][6eS][7d][*f][9d][0S][Qd][wa][eS]\n[Qd] [ey]u[TI] [ey] [6T] [wS]d[uf] [wS] [7a] [9r]T[Qy] [9r] [$T]\n [*p]o[eI] [*u] [5y] [9o]I[ru] [9o] [2I] [6y]u[9I] [Qp] [5o] [9a]\np[ro] [9I] [6u] [0p]o[TI] [0u] [29y] [9ed][0S][Qed] [9eI] [6eTp] [eTp][ya]\n[euS] [eTp] [7yI] [Qrd][Tf][QyG] [Qrd] [$*pG] [eG][wf][Qed] [0eS] [59a] [wya][Qp][0oa]\n [wuS] [26Qypd] [9pG][0f][Qpd] [epG] [59ah] [9rd][eS][9wa] [9Qa] [60pS] [eTu]w[QTp] [0To]\n [9yI] Q e [ydG] [6SG] [0h] [eG] [Tf] [7ad] 9 Q [rd] [$pd] [9f] [Qd] [eS]\n [5ya] 9 w u [$Id] 6 9 Q [5od] [9s] [wya] S [6yp] 0 [wT] [ep]\n [9yI] [Qd] e [yGj] [6SGj] [0hk] [eGj] [fh] [7dG] [Qa] e [ydG] [$pdG] [6fh] [9dG] [Sf]\n [5ad] [9s] [wya] [uS] [2Ip] 6 9 [Qp] [5ya] t [rod]   [6pS] [0u] [Tp] [oS] [2Id]\n69Qe9[Idj]e[6dfj]e[ok]e[ISj]e[uSh]e[7dG]\n9QryQ[yG]Q[$uaG]Q[yuh]Q[TypG]Q[Tpf]Q[5ad]\n9[tp]9r9[To]9[2a]6[9o]Q[eI]Q[9u]6[5Ioa]\n7[9I]w[ryd]w97[6uod]9[0y]w[ed]w[0T]6[2IS]\n9 Q[edG]Q 9[6pSG]* 0[ef]0 *[7Ioad]9 Q[rGkz]Q\n 9[$Gjz]9 Q[el]Q 9[5fhk]7 9[wkz]9 7[2Gz]6 9\n[Qj]9 6[5dk]7 0[wa]0 7[6Sj]* 0[ef]0 *[2dG]\n69Q[eyI] 9 [Tu]6*0[epSf] [0o] [Iad]79Q[eyI]\n Q [$eT]6*Q[eIpS] [*u] [5yoa]79w[rdhk] 9 [2dGj]69\nQ[eIpd] 9 [uod]579[wa]9[7f]$[upS]6*0[epSf]\n0*6[6QIpdG]       I`,
 };
 
 function loadLib() {
@@ -664,6 +664,22 @@ function refreshLibSelect(selected = '') {
       .map(n => `<option${n === selected ? ' selected' : ''}>${n.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`)
       .join('');
 }
+/* Migration : l'ancienne transcription maison du Canon est remplacée par la
+   version MIDI. On ne supprime que si elle n'a pas été modifiée par l'utilisateur. */
+(function migrateLib() {
+  const lib = loadLib();
+  let changed = false;
+  const oldCanon = lib['Canon en Ré (Pachelbel)'];
+  if (typeof oldCanon === 'string' && oldCanon.startsWith('{x0.5} 9 6 7 $ 5 2 5 6')) {
+    delete lib['Canon en Ré (Pachelbel)'];
+    changed = true;
+  }
+  if (lib['Canon in D (Pachelbel)'] === undefined) {
+    lib['Canon in D (Pachelbel)'] = LIB_SEED['Canon in D (Pachelbel)'];
+    changed = true;
+  }
+  if (changed) saveLibData(lib);
+})();
 refreshLibSelect();
 
 libSelect.addEventListener('change', () => {
