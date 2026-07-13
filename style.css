@@ -283,7 +283,9 @@ body {
 .arena[data-dock="left"] .sheet textarea,
 .arena[data-dock="right"] .sheet textarea { min-height: 160px; }
 
-@media (max-width: 900px) {
+/* En portrait sur petit écran, pas la place pour un panneau latéral :
+   tout passe en colonne. En paysage, le choix de dock est respecté. */
+@media (max-width: 900px) and (orientation: portrait) {
   .arena { flex-direction: column !important; }
   .arena .sheet { width: 100% !important; resize: none; }
 }
@@ -851,6 +853,11 @@ body.css-landscape .brand h1 { display: none !important; }
 body.css-landscape .topbar { padding: 5px 10px; gap: 8px; }
 body.css-landscape .stage { padding: 8px; gap: 8px; min-height: 0; }
 body.css-landscape .arena { flex: 1; min-height: 0; }
+/* le choix de position du panneau (dock) est respecté même en roté */
+body.css-landscape .arena[data-dock="bottom"] { flex-direction: column !important; }
+body.css-landscape .arena[data-dock="top"]    { flex-direction: column-reverse !important; }
+body.css-landscape .arena[data-dock="right"]  { flex-direction: row !important; }
+body.css-landscape .arena[data-dock="left"]   { flex-direction: row-reverse !important; }
 body.css-landscape .piano-shell {
   flex: 1;
   min-width: 0;
@@ -861,12 +868,26 @@ body.css-landscape .piano-shell {
 }
 body.css-landscape .piano-scroll { flex: 1; min-height: 0; }
 body.css-landscape .piano { height: 100%; }
-body.css-landscape .arena { flex-direction: row !important; align-items: stretch; }
-body.css-landscape .arena .sheet:not([hidden]) {
+body.css-landscape .arena { align-items: stretch; }
+/* dock latéral : le panneau prend un côté */
+body.css-landscape .arena[data-dock="left"] .sheet:not([hidden]),
+body.css-landscape .arena[data-dock="right"] .sheet:not([hidden]) {
   width: 44% !important;
   min-width: 240px;
   max-width: 50%;
   min-height: 0; /* accepte de rétrécir : le contenu défile à l'intérieur */
+  resize: none;
+  overflow-y: auto;
+}
+/* dock haut/bas : hauteur plafonnée, le piano garde l'essentiel */
+body.css-landscape .arena[data-dock="top"] .sheet:not([hidden]),
+body.css-landscape .arena[data-dock="bottom"] .sheet:not([hidden]) {
+  width: auto !important;
+  min-width: 0;
+  max-width: none;
+  flex: 0 0 auto;
+  max-height: 46%;
+  min-height: 0;
   resize: none;
   overflow-y: auto;
 }
