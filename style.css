@@ -317,13 +317,9 @@ body {
   .arena .sheet { width: 100% !important; resize: none; }
 }
 
-/* Téléphone en paysage (hauteur courte) : tout le clavier tient à l'écran,
-   les 61 touches sont visibles sans avoir à faire défiler. */
-@media (orientation: landscape) and (max-height: 520px) {
-  .piano, .cascade { min-width: 100% !important; }
-}
-body.css-landscape .piano,
-body.css-landscape .cascade { min-width: 100% !important; }
+/* En paysage, la largeur des touches suit le curseur (comme ailleurs) :
+   si les touches débordent, l'ascenseur horizontal réapparaît ; si on
+   réduit la largeur, tout le clavier tient à l'écran. */
 
 .fx {
   position: absolute;
@@ -870,7 +866,8 @@ body.keys-only .key.black.down {
 .keys-size svg { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
 .keys-size input[type="range"] { width: 110px; accent-color: var(--accent); }
 @media (pointer: coarse) {
-  body.keys-only .keys-size { display: flex; }
+  body.keys-only .keys-size,
+  body.css-landscape .keys-size { display: flex; }
 }
 
 /* Bouton flottant « Pleine touche » — mobile uniquement */

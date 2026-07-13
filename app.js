@@ -59,8 +59,10 @@ compressor.knee.value = 20;
 compressor.ratio.value = 3;
 compressor.attack.value = 0.003;
 compressor.release.value = 0.25;
-/* Réverbération de salle : réponse impulsionnelle générée (bruit décroissant) */
-function makeImpulse(seconds = 2.6, decay = 2.4) {
+/* Réverbération de salle : réponse impulsionnelle générée (bruit décroissant).
+   Impulsion courte = convolution bien moins gourmande en CPU (anti-grésillement
+   sur mobile où le buffer audio se sous-alimente sous charge). */
+function makeImpulse(seconds = 1.6, decay = 2.2) {
   const rate = ctx.sampleRate;
   const len = Math.floor(rate * seconds);
   const buf = ctx.createBuffer(2, len, rate);
@@ -91,7 +93,7 @@ const softClip = ctx.createWaveShaper();
 const _curve = new Float32Array(1024);
 for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; _curve[i] = Math.tanh(x * 1.5); }
 softClip.curve = _curve;
-softClip.oversample = '2x';
+softClip.oversample = 'none'; // pas de sur-échantillonnage : moins de CPU
 
 masterGain.connect(dryGain);
 dryGain.connect(compressor);
@@ -590,7 +592,7 @@ const cascadeCtx = cascadeCanvas.getContext('2d');
 let cascadeActive = false;
 
 function cascadeOn(on) {
-  cascadeActive = on && uiPrefs.cascade !== false;
+  cascadeActive = on && uiPrefs.cascade !== false && !uiPrefs.light;
   cascadeCanvas.hidden = !cascadeActive;
   if (cascadeActive) sizeCascade();
   else cascadeCtx.clearRect(0, 0, cascadeCanvas.width, cascadeCanvas.height);
@@ -1444,11 +1446,12 @@ const optSig = document.getElementById('optSig');
 const optReverb = document.getElementById('optReverb');
 const optKeysOnly = document.getElementById('optKeysOnly');
 const optCascade = document.getElementById('optCascade');
+const optLight = document.getElementById('optLight');
 const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 /* Migration unique : le panneau partition est désormais ouvert par défaut */
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
@@ -1466,8 +1469,9 @@ function applyUiPrefs() {
   optSheet.checked = uiPrefs.sheet;
   optFx.checked = uiPrefs.fx;
   optCascade.checked = uiPrefs.cascade !== false;
+  optLight.checked = !!uiPrefs.light;
   optReverb.value = uiPrefs.reverb;
-  setReverb(uiPrefs.reverb);
+  setReverb(uiPrefs.light ? 0 : uiPrefs.reverb); // mode léger : réverb coupée
   optKeysOnly.checked = uiPrefs.keysOnly;
   document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
   keysOnlyExit.hidden = !uiPrefs.keysOnly;
@@ -1516,6 +1520,12 @@ document.getElementById('keysQuick').addEventListener('click', () => {
 });
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });
+optLight.addEventListener('change', () => {
+  uiPrefs.light = optLight.checked;
+  saveUiPrefs();
+  setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
+  cascadeOn(autoSchedTimer !== null || autoPaused); // applique/retire la cascade en cours de lecture
+});
 optCascade.addEventListener('change', () => {
   uiPrefs.cascade = optCascade.checked;
   saveUiPrefs();
@@ -1658,7 +1668,7 @@ new ResizeObserver(fxResize).observe(fxCanvas); // suit aussi les changements de
 fxResize();
 
 function spawnNoteFx(midi) {
-  if (!uiPrefs.fx || reducedMotion) return;
+  if (!uiPrefs.fx || uiPrefs.light || reducedMotion) return;
   if (document.body.classList.contains('keys-only')) return; // perfs : pas de fx en Pleine touche
   const key = keyEls[midi];
   if (!key) return;
