@@ -804,6 +804,32 @@ body.css-landscape.keys-only .piano { height: calc(100dvw - 74px); }
   touch-action: none;
 }
 
+/* Bouton flottant « Pleine touche » — mobile uniquement */
+.keys-quick {
+  display: none;
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 95;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b0d12;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .6), 0 0 14px rgba(245, 158, 11, .35);
+  cursor: pointer;
+}
+.keys-quick svg { width: 17px; height: 17px; }
+.keys-quick:active { transform: scale(.96); }
+@media (pointer: coarse) {
+  body:not(.keys-only) .keys-quick { display: inline-flex; }
+}
+
 .keys-exit {
   position: fixed;
   top: 10px;
@@ -882,7 +908,7 @@ body.css-landscape .piano-shell {
 }
 body.css-landscape .piano-scroll { flex: 1; min-height: 0; }
 body.css-landscape .piano { height: 100%; }
-body.css-landscape .piano-shell { min-height: 185px; } /* les touches ne s'aplatissent jamais trop */
+body.css-landscape .piano-shell { min-height: 210px; } /* les touches ne s'aplatissent jamais trop */
 body.css-landscape .arena { align-items: stretch; }
 /* panneau en bas : peut rétrécir, son contenu défile à l'intérieur */
 body.css-landscape .arena .sheet:not([hidden]) {

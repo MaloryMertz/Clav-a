@@ -1203,6 +1203,12 @@ keysOnlyExit.addEventListener('click', () => {
   saveUiPrefs();
   applyUiPrefs();
 });
+/* Bouton flottant « Pleine touche » (mobile) : bascule en touches seules */
+document.getElementById('keysQuick').addEventListener('click', () => {
+  uiPrefs.keysOnly = true;
+  saveUiPrefs();
+  applyUiPrefs();
+});
 optKeySize.addEventListener('input', () => {
   uiPrefs.keySize = Number(optKeySize.value);
   saveUiPrefs();
