@@ -1624,17 +1624,32 @@ function refreshScrollHint() {
 new IntersectionObserver(refreshScrollHint, { root: settingsPop, threshold: [0, 1] }).observe(spEnd);
 settingsPop.addEventListener('scroll', refreshScrollHint, { passive: true });
 
+const settingsHome = settingsPop.parentNode; // .settings-wrap (barre du haut)
+function openSettings() {
+  /* En Pleine touche la barre du haut est masquée (display:none) → on sort le
+     menu vers <body> pour qu'il reste visible ; sinon on le remet à sa place. */
+  if (document.body.classList.contains('keys-only')) {
+    if (settingsPop.parentNode !== document.body) document.body.appendChild(settingsPop);
+  } else if (settingsPop.parentNode !== settingsHome) {
+    settingsHome.appendChild(settingsPop);
+  }
+  settingsPop.hidden = false;
+  btnSettings.setAttribute('aria-expanded', 'true');
+  settingsPop.scrollTop = 0;
+  if (typeof refreshScrollHint === 'function') setTimeout(refreshScrollHint, 30);
+}
+function closeSettings() {
+  settingsPop.hidden = true;
+  btnSettings.setAttribute('aria-expanded', 'false');
+}
 btnSettings.addEventListener('click', () => {
-  const open = settingsPop.hidden;
-  settingsPop.hidden = !open;
-  btnSettings.setAttribute('aria-expanded', String(open));
-  if (open) { settingsPop.scrollTop = 0; setTimeout(refreshScrollHint, 30); }
+  if (settingsPop.hidden) openSettings(); else closeSettings();
 });
 document.addEventListener('pointerdown', e => {
-  if (!settingsPop.hidden && !e.target.closest('.settings-wrap')) {
-    settingsPop.hidden = true;
-    btnSettings.setAttribute('aria-expanded', 'false');
-  }
+  if (settingsPop.hidden) return;
+  if (e.target.closest('#settingsPop') || e.target.closest('.settings-wrap')
+      || e.target.closest('#fabSettings')) return; // clic dans le menu ou sur un déclencheur
+  closeSettings();
 });
 
 /* Après un clic souris, on retire le focus des contrôles pour que le clavier
@@ -1863,9 +1878,9 @@ function fabPlayMode() {
 function updateFab() {
   const show = fabPlayMode() && !fabRemoved && matchMedia('(pointer: coarse)').matches;
   fab.classList.toggle('show', show);
-  if (show && !fabPlaced) {                 // position par défaut : bord droit, au milieu
-    fab.style.left = (window.innerWidth - 58) + 'px';
-    fab.style.top = Math.round(window.innerHeight * 0.42) + 'px';
+  if (show && !fabPlaced) {                 // position par défaut : en haut au centre
+    fab.style.left = Math.round(window.innerWidth / 2 - 23) + 'px';
+    fab.style.top = '10px';
     fabPlaced = true;
   }
 }
@@ -1892,9 +1907,7 @@ fab.addEventListener('pointerup', e => {
   fabDrag = null;
   fab.classList.remove('dragging');
   if (!wasDrag) {                           // tap simple → ouvrir les réglages
-    settingsPop.hidden = false;
-    btnSettings.setAttribute('aria-expanded', 'true');
-    if (typeof refreshScrollHint === 'function') setTimeout(refreshScrollHint, 30);
+    if (settingsPop.hidden) openSettings(); else closeSettings();
     return;
   }
   const r = fab.getBoundingClientRect();
