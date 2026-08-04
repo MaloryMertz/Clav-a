@@ -351,9 +351,15 @@ pianoEl.addEventListener('pointerdown', e => {
   resumeCtx();
   const midi = keyFromPoint(e.clientX, e.clientY);
   if (midi === null) return;
-  const rect = keyEls[midi].getBoundingClientRect();
-  const velocity = 0.45 + 0.55 * Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
-  pointerNotes.set(e.pointerId, { midi, x0: e.clientX, y0: e.clientY, sliding: false, touch: e.pointerType !== 'mouse' });
+  const touch = e.pointerType !== 'mouse';
+  // au tactile : volume solide et constant (un effleurement suffit) ;
+  // à la souris : nuance selon la hauteur du clic sur la touche.
+  let velocity = 0.85;
+  if (!touch) {
+    const rect = keyEls[midi].getBoundingClientRect();
+    velocity = 0.45 + 0.55 * Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+  }
+  pointerNotes.set(e.pointerId, { midi, x0: e.clientX, y0: e.clientY, sliding: false, touch });
   noteOn(midi, velocity);
 });
 

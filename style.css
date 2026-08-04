@@ -371,7 +371,9 @@ body.css-landscape .cascade { display: none !important; }
   overflow: hidden; /* les étiquettes ne créent pas de défilement à petit zoom */
 }
 
-.key { position: absolute; top: 0; cursor: pointer; }
+/* touch-action: none sur les touches → réponse instantanée à l'effleurement
+   (le navigateur ne « guette » plus un éventuel défilement avant de valider). */
+.key { position: absolute; top: 0; cursor: pointer; touch-action: none; }
 
 .key.white {
   height: 100%;
