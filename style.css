@@ -899,6 +899,30 @@ body.keys-only .key.black.down {
   body:not(.keys-only) .keys-quick { display: inline-flex; }
 }
 
+/* Pastille flottante « Réglages » : déplaçable, apparaît en plein écran /
+   Pleine touche / paysage. Position non mémorisée (revient au rechargement). */
+.fab {
+  display: none;
+  position: fixed;
+  z-index: 130;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: rgba(26, 29, 38, .85);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .55);
+  backdrop-filter: blur(4px);
+  cursor: grab;
+  touch-action: none;
+}
+.fab svg { width: 22px; height: 22px; }
+.fab.show { display: inline-flex; }
+.fab.dragging { cursor: grabbing; opacity: .85; }
+.fab:active { transform: scale(.94); }
+
 .keys-exit {
   position: fixed;
   top: 10px;

@@ -1524,12 +1524,14 @@ optKeysOnly.addEventListener('change', () => {
   uiPrefs.keysOnly = optKeysOnly.checked;
   saveUiPrefs();
   applyUiPrefs();
+  updateFab();
   if (uiPrefs.keysOnly) { settingsPop.hidden = true; btnSettings.setAttribute('aria-expanded', 'false'); }
 });
 keysOnlyExit.addEventListener('click', () => {
   uiPrefs.keysOnly = false;
   saveUiPrefs();
   applyUiPrefs();
+  updateFab();
 });
 /* Bouton flottant « Pleine touche » (mobile) : bascule en touches seules */
 document.getElementById('keysQuick').addEventListener('click', () => {
@@ -1817,6 +1819,7 @@ rotateDismiss.addEventListener('click', () => {
 });
 function setCssLandscape(on) {
   document.body.classList.toggle('css-landscape', on);
+  if (typeof updateFab === 'function') updateFab();
 }
 
 rotateFs.addEventListener('click', async () => {
@@ -1844,7 +1847,68 @@ updateRotateHint();
 document.addEventListener('fullscreenchange', () => {
   document.body.classList.toggle('fs-active', !!document.fullscreenElement);
   if (typeof updatePanBar === 'function') updatePanBar();
+  updateFab();
 });
+
+/* ---------- Pastille flottante « Réglages » (plein écran / Pleine touche) ---------- */
+const fab = document.getElementById('fabSettings');
+let fabRemoved = false; // masquée pour la session (revient au rechargement)
+let fabPlaced = false;  // position par défaut posée ?
+
+function fabPlayMode() {
+  return document.body.classList.contains('keys-only')
+    || document.body.classList.contains('fs-active')
+    || document.body.classList.contains('css-landscape');
+}
+function updateFab() {
+  const show = fabPlayMode() && !fabRemoved && matchMedia('(pointer: coarse)').matches;
+  fab.classList.toggle('show', show);
+  if (show && !fabPlaced) {                 // position par défaut : bord droit, au milieu
+    fab.style.left = (window.innerWidth - 58) + 'px';
+    fab.style.top = Math.round(window.innerHeight * 0.42) + 'px';
+    fabPlaced = true;
+  }
+}
+
+let fabDrag = null;
+fab.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  try { fab.setPointerCapture(e.pointerId); } catch (_) {}
+  const r = fab.getBoundingClientRect();
+  fabDrag = { id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, moved: false };
+});
+fab.addEventListener('pointermove', e => {
+  if (!fabDrag || e.pointerId !== fabDrag.id) return;
+  const ddx = e.clientX - fabDrag.x0, ddy = e.clientY - fabDrag.y0;
+  if (!fabDrag.moved && ddx * ddx + ddy * ddy < 64) return; // seuil 8px avant de déplacer
+  fabDrag.moved = true;
+  fab.classList.add('dragging');
+  fab.style.left = (e.clientX - fabDrag.ox) + 'px';
+  fab.style.top = (e.clientY - fabDrag.oy) + 'px';
+});
+fab.addEventListener('pointerup', e => {
+  if (!fabDrag || e.pointerId !== fabDrag.id) return;
+  const wasDrag = fabDrag.moved;
+  fabDrag = null;
+  fab.classList.remove('dragging');
+  if (!wasDrag) {                           // tap simple → ouvrir les réglages
+    settingsPop.hidden = false;
+    btnSettings.setAttribute('aria-expanded', 'true');
+    if (typeof refreshScrollHint === 'function') setTimeout(refreshScrollHint, 30);
+    return;
+  }
+  const r = fab.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  if (cx < 0 || cx > window.innerWidth || cy < 0 || cy > window.innerHeight) {
+    fabRemoved = true;                      // poussée hors écran → masquée pour la session
+    updateFab();
+  } else {                                  // sinon on la garde entièrement visible
+    fab.style.left = Math.min(window.innerWidth - r.width - 4, Math.max(4, r.left)) + 'px';
+    fab.style.top = Math.min(window.innerHeight - r.height - 4, Math.max(4, r.top)) + 'px';
+  }
+});
+window.addEventListener('resize', updateFab);
+updateFab();
 
 /* ---------- PWA : service worker + indicateur hors-ligne ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
