@@ -1475,6 +1475,8 @@ try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}'
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
 /* Tactile moins sensible par défaut (ancienne valeur 16 → 26) */
 if (!uiPrefs.tolDefaultV2) { if ((uiPrefs.touchTol ?? 16) <= 16) uiPrefs.touchTol = 26; uiPrefs.tolDefaultV2 = true; }
+/* Ceux qui avaient déjà réglé la largeur gardent leur valeur (prime partout) */
+if (uiPrefs.keyWTouched === undefined) uiPrefs.keyWTouched = (uiPrefs.keySize ?? 100) !== 100;
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
 }
@@ -1506,19 +1508,36 @@ let mmReady = false;  // vrai une fois le mini-piano initialisé
 const ksW = document.getElementById('ksW');
 const ksH = document.getElementById('ksH');
 
+/* Largeur effective : en plein écran / Pleine touche / paysage sur téléphone,
+   des touches plus larges par défaut (100 % = trop fin) — tant que l'utilisateur
+   n'a pas ajusté lui-même le curseur ; ensuite c'est sa valeur qui prime partout. */
+const PLAY_DEFAULT_KEYW = 150;
+function effectiveKeyW() {
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const playMode = document.body.classList.contains('keys-only')
+    || document.body.classList.contains('fs-active')
+    || document.body.classList.contains('css-landscape');
+  if (coarse && playMode && !uiPrefs.keyWTouched) return PLAY_DEFAULT_KEYW;
+  return uiPrefs.keySize;
+}
 function applyKeySize() {
-  document.documentElement.style.setProperty('--key-w', uiPrefs.keySize / 100);
+  const w = effectiveKeyW();
+  document.documentElement.style.setProperty('--key-w', w / 100);
   document.documentElement.style.setProperty('--key-h', uiPrefs.keyH / 100);
-  ksW.value = uiPrefs.keySize;
+  ksW.value = w;
   ksH.value = uiPrefs.keyH;
   if (panReady) updatePanBar(); // pas encore initialisé au tout premier applyUiPrefs()
 }
-[[ksW, 'keySize'], [ksH, 'keyH']].forEach(([input, pref]) => {
-  input.addEventListener('input', () => {
-    uiPrefs[pref] = Number(input.value);
-    saveUiPrefs();
-    applyKeySize();
-  });
+ksW.addEventListener('input', () => {
+  uiPrefs.keySize = Number(ksW.value);
+  uiPrefs.keyWTouched = true; // choix explicite → prime désormais partout
+  saveUiPrefs();
+  applyKeySize();
+});
+ksH.addEventListener('input', () => {
+  uiPrefs.keyH = Number(ksH.value);
+  saveUiPrefs();
+  applyKeySize();
 });
 applyUiPrefs();
 
@@ -1629,9 +1648,13 @@ settingsPop.addEventListener('scroll', refreshScrollHint, { passive: true });
 
 const settingsHome = settingsPop.parentNode; // .settings-wrap (barre du haut)
 function openSettings() {
-  /* En Pleine touche la barre du haut est masquée (display:none) → on sort le
-     menu vers <body> pour qu'il reste visible ; sinon on le remet à sa place. */
-  if (document.body.classList.contains('keys-only')) {
+  /* En plein écran / Pleine touche / paysage, on sort le menu vers <body> pour
+     qu'il reste fiable (fenêtre centrée, au-dessus de tout) ; sinon on le remet
+     à sa place dans la barre du haut. */
+  const playMode = document.body.classList.contains('keys-only')
+    || document.body.classList.contains('fs-active')
+    || document.body.classList.contains('css-landscape');
+  if (playMode) {
     if (settingsPop.parentNode !== document.body) document.body.appendChild(settingsPop);
   } else if (settingsPop.parentNode !== settingsHome) {
     settingsHome.appendChild(settingsPop);
@@ -1891,7 +1914,7 @@ rotateDismiss.addEventListener('click', () => {
 function setCssLandscape(on) {
   document.body.classList.toggle('css-landscape', on);
   if (typeof updateFab === 'function') updateFab();
-  if (panReady) updatePanBar(); // rafraîchit ascenseur + mini-piano
+  applyKeySize();               // largeur confortable en entrant/sortant du paysage
 }
 
 rotateFs.addEventListener('click', async () => {
@@ -1918,6 +1941,7 @@ updateRotateHint();
    de taille + recalculer l'ascenseur (sinon aucun contrôle en plein écran). */
 document.addEventListener('fullscreenchange', () => {
   document.body.classList.toggle('fs-active', !!document.fullscreenElement);
+  applyKeySize();               // largeur confortable en entrant en plein écran
   if (typeof updatePanBar === 'function') updatePanBar();
   updateFab();
 });

@@ -856,6 +856,14 @@ body.css-landscape .pan-bar { display: none !important; }
 /* Réglages inutiles en Pleine touche (panneau, effets, aide, signature) */
 body.keys-only .pm-hide { display: none !important; }
 
+/* Sur téléphone en plein jeu, on masque les lettres du clavier sur les touches
+   (inutiles au doigt) pour un clavier épuré. */
+@media (pointer: coarse) {
+  body.keys-only .key .lbl,
+  body.fs-active .key .lbl,
+  body.css-landscape .key .lbl { display: none !important; }
+}
+
 /* Mini-piano : aperçu de tout le clavier ; la zone visible reste claire,
    le reste est assombri. Sert aussi d'ascenseur (tap/glisser). */
 .minimap {
