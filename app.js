@@ -512,6 +512,15 @@ function sheetNotePlayed(midi) {
   if (sheetExpected.size === 0) sheetNextStep();
 }
 
+/* Indicateur de mode sous le piano : Auto pendant la lecture auto, Manuel sinon
+   (jeu libre ou mode Suivre). */
+const modeBadge = document.getElementById('modeBadge');
+function setMode(auto) {
+  if (!modeBadge) return;
+  modeBadge.classList.toggle('auto', auto);
+  modeBadge.innerHTML = 'Mode&nbsp;: <b>' + (auto ? 'Auto' : 'Manuel') + '</b>';
+}
+
 function startSheet() {
   sheetSteps = parseSheet(sheetInput.value);
   if (!sheetSteps.length) {
@@ -522,6 +531,7 @@ function startSheet() {
   sheetPos = -1;
   sheetStart.disabled = true;
   sheetStop.disabled = false;
+  setMode(false); // Suivre = Manuel
   sheetNextStep();
 }
 
@@ -792,6 +802,7 @@ function autoResetUi() {
   sheetStop.disabled = true;
   autoPause.disabled = true;
   cascadeOn(false);
+  setMode(false);
 }
 
 function startAuto() {
@@ -815,9 +826,11 @@ function startAuto() {
   sheetStop.disabled = false;
   autoPause.disabled = false;
   cascadeOn(true);
+  setMode(true);
   resumeCtx();
-  const lead = Math.min(1.2, CASCADE_LEAD * autoStepDur(0)); // temps de chute de la cascade
-  beatTimes = [ctx.currentTime + 0.15 + lead];
+  // lead-in = temps de chute de la cascade ; si elle est masquée, la 1re note part vite
+  const lead = cascadeActive ? Math.min(1.2, CASCADE_LEAD * autoStepDur(0)) : 0.06;
+  beatTimes = [ctx.currentTime + 0.12 + lead];
   autoHead = -CASCADE_LEAD;
   autoSchedule();
   autoSchedTimer = setInterval(autoSchedule, 60);
@@ -908,7 +921,8 @@ function refreshLibSelect(selected = '') {
   const opt = (n, pref) => `<option value="${pref}${esc(n)}"${(pref + n) === selected ? ' selected' : ''}>${esc(n)}</option>`;
   let html = '<option value="">— Bibliothèque —</option>' +
     Object.keys(lib).sort((a, b) => a.localeCompare(b, 'fr')).map(n => opt(n, '')).join('');
-  const fnames = Object.keys(folderLib);
+  // un titre présent en local ET dans le dossier ne s'affiche qu'une fois (local prioritaire)
+  const fnames = Object.keys(folderLib).filter(n => lib[n] === undefined);
   if (fnames.length) {
     html += '<optgroup label="Dossier en ligne">' +
       fnames.sort((a, b) => a.localeCompare(b, 'fr')).map(n => opt(n, '@')).join('') + '</optgroup>';
@@ -1413,10 +1427,14 @@ sheetPanel.addEventListener('drop', e => {
 /* ---------- Agrandissement du panneau partition ---------- */
 const sheetMax = document.getElementById('sheetMax');
 
+const SHEET_MAX_ICON = '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'; // agrandir
+const SHEET_CLOSE_ICON = '<path d="M18 6 6 18M6 6l12 12"/>';                   // croix (fermer)
 function setSheetMax(on) {
   sheetPanel.classList.toggle('max', on);
   sheetMax.setAttribute('aria-pressed', String(on));
-  sheetMax.title = on ? 'Réduire le panneau (Échap)' : 'Agrandir le panneau en plein écran (Échap pour réduire)';
+  sheetMax.title = on ? 'Réduire le panneau' : 'Agrandir le panneau en plein écran';
+  const svg = sheetMax.querySelector('svg');
+  if (svg) svg.innerHTML = on ? SHEET_CLOSE_ICON : SHEET_MAX_ICON;
 }
 sheetMax.addEventListener('click', () => setSheetMax(!sheetPanel.classList.contains('max')));
 window.addEventListener('keydown', e => {

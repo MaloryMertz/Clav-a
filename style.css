@@ -611,6 +611,19 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
   50% { opacity: .25; }
 }
 
+/* Boutons de lecture au-dessus de la sélection de musique */
+.sheet-actions { order: -2; }
+.sheet-lib { order: -1; }
+
+.mode-badge {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.mode-badge b { color: var(--text-dim); font-weight: 600; }
+.mode-badge.auto b { color: var(--accent); }
+
 .sheet-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sheet-actions .ctl-btn[disabled] { opacity: .45; cursor: default; }
 .sheet-actions .ctl-btn svg { width: 16px; height: 16px; }
