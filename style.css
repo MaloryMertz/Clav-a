@@ -848,6 +848,41 @@ body.keys-only .key.black.down {
   cursor: pointer;
   touch-action: none;
 }
+/* En plein jeu, on remplace l'ascenseur brut par le mini-piano (voir .minimap) */
+body.keys-only .pan-bar,
+body.fs-active .pan-bar,
+body.css-landscape .pan-bar { display: none !important; }
+
+/* Réglages inutiles en Pleine touche (panneau, effets, aide, signature) */
+body.keys-only .pm-hide { display: none !important; }
+
+/* Mini-piano : aperçu de tout le clavier ; la zone visible reste claire,
+   le reste est assombri. Sert aussi d'ascenseur (tap/glisser). */
+.minimap {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 26px;
+  margin-top: 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #05060a;
+  touch-action: none;
+  cursor: pointer;
+}
+.minimap canvas { display: block; width: 100%; height: 100%; }
+/* fenêtre visible (partie non assombrie) */
+.minimap .mm-window {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(245, 158, 11, .1);
+  box-shadow: 0 0 0 2000px rgba(4, 5, 9, .62); /* assombrit tout le reste */
+  pointer-events: none;
+}
+.minimap.show { display: block; }
 
 /* Mini-curseurs flottants largeur/hauteur — mode touches seules sur mobile */
 .keys-size {

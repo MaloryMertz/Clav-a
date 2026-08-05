@@ -1,5 +1,5 @@
 /* Service worker — cache-first pour un fonctionnement 100 % hors-ligne */
-const CACHE = 'piano-v56';
+const CACHE = 'piano-v57';
 
 const SAMPLES = [
   'C1', 'Ds1', 'Fs1', 'A1',

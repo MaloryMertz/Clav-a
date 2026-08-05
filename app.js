@@ -1469,10 +1469,12 @@ const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 16 };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 26 };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 /* Migration unique : le panneau partition est désormais ouvert par défaut */
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
+/* Tactile moins sensible par défaut (ancienne valeur 16 → 26) */
+if (!uiPrefs.tolDefaultV2) { if ((uiPrefs.touchTol ?? 16) <= 16) uiPrefs.touchTol = 26; uiPrefs.tolDefaultV2 = true; }
 function saveUiPrefs() {
   try { localStorage.setItem('piano.ui', JSON.stringify(uiPrefs)); } catch (_) {}
 }
@@ -1500,6 +1502,7 @@ function applyUiPrefs() {
 /* Taille des touches : largeur et hauteur indépendantes.
    Réglage uniquement via les mini-curseurs flottants du mode Pleine touche. */
 let panReady = false; // vrai une fois l'ascenseur du clavier initialisé
+let mmReady = false;  // vrai une fois le mini-piano initialisé
 const ksW = document.getElementById('ksW');
 const ksH = document.getElementById('ksH');
 
@@ -1790,6 +1793,7 @@ function updatePanBar() {
   const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;
   panBar.hidden = overflow <= 4;
   if (!panBar.hidden) panBar.value = Math.round(pianoScroll.scrollLeft / overflow * 100);
+  if (mmReady) updateMiniMap();
 }
 panBar.addEventListener('input', () => {
   const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;
@@ -1800,6 +1804,58 @@ pianoScroll.addEventListener('scroll', () => {
 }, { passive: true });
 new ResizeObserver(updatePanBar).observe(pianoScroll);
 window.addEventListener('resize', updatePanBar);
+
+/* ---------- Mini-piano : aperçu du clavier + ascenseur (plein jeu) ---------- */
+const miniMap = document.getElementById('miniMap');
+const mmCanvas = document.getElementById('miniMapCanvas');
+const mmCtx = mmCanvas.getContext('2d');
+const mmWindow = document.getElementById('mmWindow');
+const mmPlayMode = () => document.body.classList.contains('keys-only')
+  || document.body.classList.contains('fs-active')
+  || document.body.classList.contains('css-landscape');
+
+function drawMiniKeys() {
+  const w = miniMap.clientWidth, h = miniMap.clientHeight;
+  if (!w) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  mmCanvas.width = Math.round(w * dpr);
+  mmCanvas.height = Math.round(h * dpr);
+  mmCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  mmCtx.clearRect(0, 0, w, h);
+  mmCtx.fillStyle = '#d7d1c2';
+  mmCtx.fillRect(0, 1, w, h - 2); // fond touches blanches
+  const pianoW = pianoEl.offsetWidth || w;
+  for (let midi = FIRST_MIDI; midi <= LAST_MIDI; midi++) {
+    const el = keyEls[midi];
+    if (!el || !el.classList.contains('black')) continue;
+    const x = el.offsetLeft / pianoW * w, bw = Math.max(1.4, el.offsetWidth / pianoW * w);
+    mmCtx.fillStyle = '#14161b';
+    mmCtx.fillRect(x, 1, bw, h * 0.6);
+  }
+}
+function updateMiniMap() {
+  const overflow = pianoScroll.scrollWidth - pianoScroll.clientWidth;
+  const show = mmPlayMode() && overflow > 4;
+  miniMap.classList.toggle('show', show);
+  if (!show) return;
+  drawMiniKeys();
+  const w = miniMap.clientWidth;
+  mmWindow.style.left = (pianoScroll.scrollLeft / pianoScroll.scrollWidth * w) + 'px';
+  mmWindow.style.width = (pianoScroll.clientWidth / pianoScroll.scrollWidth * w) + 'px';
+}
+function mmScrollToPointer(clientX) {
+  const r = miniMap.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  const max = pianoScroll.scrollWidth - pianoScroll.clientWidth;
+  pianoScroll.scrollLeft = Math.max(0, Math.min(max, frac * pianoScroll.scrollWidth - pianoScroll.clientWidth / 2));
+  updateMiniMap();
+}
+let mmDragging = false;
+miniMap.addEventListener('pointerdown', e => { e.preventDefault(); mmDragging = true; try { miniMap.setPointerCapture(e.pointerId); } catch (_) {} mmScrollToPointer(e.clientX); });
+miniMap.addEventListener('pointermove', e => { if (mmDragging) mmScrollToPointer(e.clientX); });
+window.addEventListener('pointerup', () => { mmDragging = false; });
+mmReady = true;      // updatePanBar peut désormais rafraîchir le mini-piano
+updateMiniMap();
 /* au démarrage : clavier centré (le Do central au milieu) */
 pianoScroll.scrollLeft = (pianoScroll.scrollWidth - pianoScroll.clientWidth) / 2;
 updatePanBar();
@@ -1835,6 +1891,7 @@ rotateDismiss.addEventListener('click', () => {
 function setCssLandscape(on) {
   document.body.classList.toggle('css-landscape', on);
   if (typeof updateFab === 'function') updateFab();
+  if (panReady) updatePanBar(); // rafraîchit ascenseur + mini-piano
 }
 
 rotateFs.addEventListener('click', async () => {

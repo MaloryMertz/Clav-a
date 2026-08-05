@@ -81,14 +81,14 @@
       <div class="settings-pop" id="settingsPop" hidden>
         <p class="sp-title">Affichage</p>
         <label title="Coupe réverb, feu d'artifice et cascade — contre le grésillement sur téléphone peu puissant"><input type="checkbox" id="optLight"> Mode léger (moins d'effets)</label>
-        <label><input type="checkbox" id="optSheet"> Panneau partition</label>
-        <label><input type="checkbox" id="optFx" checked> Feu d'artifice de notes</label>
-        <label><input type="checkbox" id="optCascade" checked> Notes qui tombent (guide)</label>
-        <label><input type="checkbox" id="optHint" checked> Ligne d'aide</label>
-        <label><input type="checkbox" id="optSig" checked> Signature</label>
+        <label class="pm-hide"><input type="checkbox" id="optSheet"> Panneau partition</label>
+        <label class="pm-hide"><input type="checkbox" id="optFx" checked> Feu d'artifice de notes</label>
+        <label class="pm-hide"><input type="checkbox" id="optCascade" checked> Notes qui tombent (guide)</label>
+        <label class="pm-hide"><input type="checkbox" id="optHint" checked> Ligne d'aide</label>
+        <label class="pm-hide"><input type="checkbox" id="optSig" checked> Signature</label>
         <label><input type="checkbox" id="optKeysOnly"> Touches seules</label>
         <p class="sp-note mobile-only">La taille des touches se règle dans le mode <strong>Pleine touche</strong>.</p>
-        <label class="sp-slider mobile-only" title="Un doigt doit glisser un peu avant de changer de note — évite les fausses notes"><span>Tolérance tactile</span><input type="range" id="optTouchTol" min="0" max="40" value="16" aria-label="Tolérance tactile"></label>
+        <label class="sp-slider mobile-only" title="Un doigt doit glisser un peu avant de changer de note — évite les fausses notes"><span>Tolérance tactile</span><input type="range" id="optTouchTol" min="0" max="50" value="26" aria-label="Tolérance tactile"></label>
         <p class="sp-title">Son</p>
         <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
           <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">
@@ -123,6 +123,10 @@
         <div class="piano" id="piano" aria-label="Clavier de piano, 61 touches de Do2 à Do7"></div>
       </div>
       <input type="range" id="panBar" class="pan-bar" min="0" max="100" value="50" hidden aria-label="Faire défiler le clavier vers la gauche ou la droite">
+      <div class="minimap" id="miniMap" aria-label="Aperçu du clavier — glisser pour se déplacer">
+        <canvas id="miniMapCanvas"></canvas>
+        <div class="mm-window" id="mmWindow"></div>
+      </div>
     </div>
     <section class="sheet" id="sheetPanel" hidden aria-label="Partition">
       <div class="sheet-lib">
@@ -221,7 +225,7 @@
 <div class="keys-size" id="keysSize" aria-label="Taille des touches">
   <label title="Largeur des touches">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
-    <input id="ksW" type="range" min="35" max="180" value="100" aria-label="Largeur des touches">
+    <input id="ksW" type="range" min="35" max="320" value="100" aria-label="Largeur des touches">
   </label>
   <label title="Hauteur des touches">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>
