@@ -1396,8 +1396,13 @@ async function searchMidi() {
       });
       midiResults.appendChild(b);
     }
-  } catch (_) {
-    midiResults.innerHTML = '<p class="mr-info">Recherche impossible — vérifiez la connexion (BitMidi requiert le réseau).</p>';
+  } catch (err) {
+    const down = /5\d\d/.test(err.message || '');
+    midiResults.innerHTML = '<p class="mr-info">'
+      + (down
+        ? 'Le service de recherche MIDI (BitMidi) est momentanément indisponible. Réessayez plus tard'
+        : 'Recherche impossible — vérifiez votre connexion')
+      + ', ou importez un fichier .mid avec le bouton MIDI.</p>';
   }
 }
 
@@ -1976,6 +1981,34 @@ rotateFs.addEventListener('click', async () => {
   if (!locked) setCssLandscape(true); // plan B : on tourne toute l'app à 90° en CSS
   rotateDismissed = true;
   updateRotateHint();
+});
+
+/* Bouton d'orientation (barre du haut) : cycle Auto → Horizontal → Vertical.
+   Tente le verrouillage natif de l'orientation ; sinon, plan B en CSS pour
+   l'horizontal (l'app est tournée à 90°). Non mémorisé (revient à Auto au
+   rechargement). */
+const btnOrient = document.getElementById('btnOrient');
+const orientLabel = document.getElementById('orientLabel');
+let orientMode = 0; // 0 = Auto, 1 = Horizontal, 2 = Vertical
+async function tryLock(o) {
+  try { await screen.orientation.lock(o); return true; } catch (_) { return false; }
+}
+btnOrient.addEventListener('click', async () => {
+  orientMode = (orientMode + 1) % 3;
+  if (orientMode === 0) {          // Auto
+    orientLabel.textContent = 'Auto';
+    try { screen.orientation.unlock(); } catch (_) {}
+    setCssLandscape(false);
+  } else if (orientMode === 1) {   // Horizontal
+    orientLabel.textContent = 'Horizontal';
+    const ok = await tryLock('landscape');
+    setCssLandscape(!ok && window.innerHeight > window.innerWidth); // plan B si portrait physique
+  } else {                         // Vertical
+    orientLabel.textContent = 'Vertical';
+    setCssLandscape(false);        // retour à l'affichage normal (vertical)
+    await tryLock('portrait');
+  }
+  btnOrient.blur();
 });
 
 window.addEventListener('resize', () => {
