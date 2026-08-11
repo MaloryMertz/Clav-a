@@ -881,10 +881,9 @@ body.keys-only .key.black.down {
   cursor: pointer;
   touch-action: none;
 }
-/* En plein jeu, on remplace l'ascenseur brut par le mini-piano (voir .minimap) */
-body.keys-only .pan-bar,
-body.fs-active .pan-bar,
-body.css-landscape .pan-bar { display: none !important; }
+/* En Pleine touche seulement, on remplace l'ascenseur brut par le mini-piano.
+   En horizontal/vertical normal, l'ascenseur classique reste. */
+body.keys-only .pan-bar { display: none !important; }
 
 /* Réglages inutiles en Pleine touche (panneau, effets, aide, signature) */
 body.keys-only .pm-hide { display: none !important; }
@@ -966,9 +965,7 @@ body.keys-only .pm-hide { display: none !important; }
 .keys-size svg { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
 .keys-size input[type="range"] { width: 110px; accent-color: var(--accent); }
 @media (pointer: coarse) {
-  body.keys-only .keys-size,
-  body.css-landscape .keys-size,
-  body.fs-active .keys-size { display: flex; }
+  body.keys-only .keys-size { display: flex; } /* uniquement en Pleine touche */
 }
 
 /* Bouton flottant « Pleine touche » — mobile uniquement */

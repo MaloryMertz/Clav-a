@@ -150,7 +150,7 @@ function warmUpAudio() {
 
 let transpose = 0; // demi-tons, -12..+12 (comme virtualpiano.net)
 
-function noteOn(midi, velocity = 0.85) {
+function noteOn(midi, velocity = 0.72) {
   if (midi < FIRST_MIDI || midi > LAST_MIDI || !buffers.length) return;
   resumeCtx();
   const prev = activeVoices.get(midi);
@@ -179,7 +179,7 @@ function noteOn(midi, velocity = 0.85) {
   sheetNotePlayed(midi);
 }
 
-const MAX_SUSTAINED = 24; // au-delà, on relâche les plus anciennes (anti-saturation/CPU)
+const MAX_SUSTAINED = 16; // au-delà, on relâche les plus anciennes (anti-saturation/CPU)
 
 function noteOff(midi) {
   const voice = activeVoices.get(midi);
@@ -354,10 +354,11 @@ pianoEl.addEventListener('pointerdown', e => {
   const touch = e.pointerType !== 'mouse';
   // au tactile : volume solide et constant (un effleurement suffit) ;
   // à la souris : nuance selon la hauteur du clic sur la touche.
-  let velocity = 0.85;
+  // Niveaux volontairement modérés → marge anti-saturation en jeu libre soutenu.
+  let velocity = 0.72;
   if (!touch) {
     const rect = keyEls[midi].getBoundingClientRect();
-    velocity = 0.45 + 0.55 * Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    velocity = 0.4 + 0.4 * Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
   }
   pointerNotes.set(e.pointerId, { midi, x0: e.clientX, y0: e.clientY, sliding: false, touch });
   noteOn(midi, velocity);
@@ -377,7 +378,7 @@ window.addEventListener('pointermove', e => {
   noteOff(st.midi);
   if (midi !== null) {
     st.midi = midi;
-    noteOn(midi, 0.8);
+    noteOn(midi, 0.68);
   } else {
     pointerNotes.delete(e.pointerId);
   }
@@ -1679,10 +1680,8 @@ function openSettings() {
   /* En plein écran / Pleine touche / paysage, on sort le menu vers <body> pour
      qu'il reste fiable (fenêtre centrée, au-dessus de tout) ; sinon on le remet
      à sa place dans la barre du haut. */
-  const playMode = document.body.classList.contains('keys-only')
-    || document.body.classList.contains('fs-active')
-    || document.body.classList.contains('css-landscape');
-  if (playMode) {
+  // En Pleine touche la barre du haut est masquée → on sort le menu vers <body>.
+  if (document.body.classList.contains('keys-only')) {
     if (settingsPop.parentNode !== document.body) document.body.appendChild(settingsPop);
   } else if (settingsPop.parentNode !== settingsHome) {
     settingsHome.appendChild(settingsPop);
@@ -1861,9 +1860,7 @@ const miniMap = document.getElementById('miniMap');
 const mmCanvas = document.getElementById('miniMapCanvas');
 const mmCtx = mmCanvas.getContext('2d');
 const mmWindow = document.getElementById('mmWindow');
-const mmPlayMode = () => document.body.classList.contains('keys-only')
-  || document.body.classList.contains('fs-active')
-  || document.body.classList.contains('css-landscape');
+const mmPlayMode = () => document.body.classList.contains('keys-only'); // Pleine touche seulement
 
 function drawMiniKeys() {
   const w = miniMap.clientWidth, h = miniMap.clientHeight;
@@ -2033,9 +2030,7 @@ let fabRemoved = false; // masquée pour la session (revient au rechargement)
 let fabPlaced = false;  // position par défaut posée ?
 
 function fabPlayMode() {
-  return document.body.classList.contains('keys-only')
-    || document.body.classList.contains('fs-active')
-    || document.body.classList.contains('css-landscape');
+  return document.body.classList.contains('keys-only'); // pastille réglages : Pleine touche seulement
 }
 function updateFab() {
   const show = fabPlayMode() && !fabRemoved && matchMedia('(pointer: coarse)').matches;
