@@ -626,6 +626,26 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 
 .sheet-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sheet-actions .ctl-btn[disabled] { opacity: .45; cursor: default; }
+
+/* ===== Responsive du menu partition (portrait + paysage étroits) ===== */
+.sheet > * { max-width: 100%; }
+.sheet-lib, .sheet-actions, .save-row, .midi-search { min-width: 0; }
+.sheet-lib select { flex: 1 1 140px; min-width: 0; }
+.midi-search input { min-width: 0; }
+@media (max-width: 600px) {
+  .sheet { padding: 10px; gap: 8px; }
+  .sheet-actions { gap: 6px; }
+  .sheet-actions .ctl-btn { min-height: 40px; padding: 8px 10px; font-size: 13px; }
+  .sheet-lib .ctl-btn.sm2, .midi-search .ctl-btn.sm2 { min-height: 36px; padding: 6px 9px; font-size: 12px; }
+  .tempo { padding: 5px 8px; gap: 6px; }
+  .tempo input[type="range"] { width: 72px; }
+  .sheet-progress { flex-basis: 100%; }   /* le message passe sur sa propre ligne */
+  .dock { margin-left: 0; }
+}
+/* Paysage court : le panneau garde une hauteur bornée et défile à l'intérieur */
+@media (orientation: landscape) and (max-height: 560px) {
+  .arena .sheet:not(.max) { max-height: 46vh; overflow-y: auto; }
+}
 .sheet-actions .ctl-btn svg { width: 16px; height: 16px; }
 #autoStart svg { color: var(--accent); }
 
