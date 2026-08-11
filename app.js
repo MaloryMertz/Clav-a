@@ -718,6 +718,9 @@ function beatTimeAt(k) { // garantit beatTimes[0..k] calculés (figés une fois 
 
 function scheduleTone(midi, when, ring, velocity) {
   if (midi < FIRST_MIDI || midi > LAST_MIDI || !buffers.length) return;
+  // jamais dans le passé : sinon src.start() démarre au milieu de l'échantillon
+  // (forme d'onde non nulle) → « clic ». On garde toujours une attaque propre.
+  when = Math.max(when, ctx.currentTime + 0.008);
   const sounding = midi + transpose;
   const s = nearestSample(sounding);
   const src = ctx.createBufferSource();
@@ -726,12 +729,12 @@ function scheduleTone(midi, when, ring, velocity) {
   const gain = ctx.createGain();
   const vel = Math.max(0.05, Math.min(1, velocity));
   gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(vel, when + 0.005); // attaque douce (anti-clic)
-  gain.gain.setTargetAtTime(0, when + ring, 0.12);      // extinction bornée (anti-empilement)
+  gain.gain.linearRampToValueAtTime(vel, when + 0.008); // attaque douce (anti-clic)
+  gain.gain.setTargetAtTime(0, when + ring, 0.14);      // extinction plus douce
   src.connect(gain);
   gain.connect(masterGain);
   src.start(when);
-  src.stop(when + ring + 0.8);
+  src.stop(when + ring + 1.0);
   const voice = { src, gain };
   src.onended = () => { try { gain.disconnect(); } catch (_) {} const i = autoSchedVoices.indexOf(voice); if (i >= 0) autoSchedVoices.splice(i, 1); };
   autoSchedVoices.push(voice);
@@ -743,7 +746,9 @@ function autoSchedule() {
     const ev = autoTimeline[schedBeat];
     if (ev.notes) {
       const ring = autoStepDur(schedBeat) + 0.45; // léger legato, borné
-      for (const m of ev.notes) scheduleTone(m, beatTimeAt(schedBeat), ring, 0.8);
+      // moins fort quand l'accord est dense → marge anti-saturation
+      const vel = 0.78 - Math.min(0.22, (ev.notes.length - 1) * 0.05);
+      for (const m of ev.notes) scheduleTone(m, beatTimeAt(schedBeat), ring, vel);
     }
     schedBeat++;
   }
@@ -1891,10 +1896,35 @@ function mmScrollToPointer(clientX) {
   pianoScroll.scrollLeft = Math.max(0, Math.min(max, frac * pianoScroll.scrollWidth - pianoScroll.clientWidth / 2));
   updateMiniMap();
 }
-let mmDragging = false;
-miniMap.addEventListener('pointerdown', e => { e.preventDefault(); mmDragging = true; try { miniMap.setPointerCapture(e.pointerId); } catch (_) {} mmScrollToPointer(e.clientX); });
-miniMap.addEventListener('pointermove', e => { if (mmDragging) mmScrollToPointer(e.clientX); });
-window.addEventListener('pointerup', () => { mmDragging = false; });
+/* Mini-piano moins « tactile » : pas de saut au simple contact — il faut un
+   vrai glissement (> seuil) pour déplacer, ce qui évite les déplacements
+   accidentels quand le doigt effleure la bande. */
+let mmDrag = null;
+miniMap.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  try { miniMap.setPointerCapture(e.pointerId); } catch (_) {}
+  mmDrag = { id: e.pointerId, x0: e.clientX, active: false };
+});
+miniMap.addEventListener('pointermove', e => {
+  if (!mmDrag || e.pointerId !== mmDrag.id) return;
+  if (!mmDrag.active) {
+    if (Math.abs(e.clientX - mmDrag.x0) < 8) return; // seuil avant d'agir
+    mmDrag.active = true;
+  }
+  mmScrollToPointer(e.clientX);
+});
+window.addEventListener('pointerup', e => { if (mmDrag && e.pointerId === mmDrag.id) mmDrag = null; });
+
+/* Croix « masquer » sur les overlays flottants : cache l'élément pour la
+   session (aucune persistance → il revient au rechargement de la page). */
+document.querySelectorAll('.ov-close[data-hide]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const el = document.getElementById(btn.dataset.hide);
+    if (el) el.classList.add('ov-dismissed');
+  });
+  btn.addEventListener('pointerdown', e => e.stopPropagation()); // n'active pas le drag du parent
+});
 mmReady = true;      // updatePanBar peut désormais rafraîchir le mini-piano
 updateMiniMap();
 /* au démarrage : clavier centré (le Do central au milieu) */

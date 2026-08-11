@@ -126,6 +126,7 @@
       <div class="minimap" id="miniMap" aria-label="Aperçu du clavier — glisser pour se déplacer">
         <canvas id="miniMapCanvas"></canvas>
         <div class="mm-window" id="mmWindow"></div>
+        <button class="ov-close" data-hide="miniMap" type="button" aria-label="Masquer l'aperçu du clavier" title="Masquer (revient au rechargement)">×</button>
       </div>
       <p class="mode-badge" id="modeBadge">Mode&nbsp;: <b>Manuel</b></p>
     </div>
@@ -224,6 +225,7 @@
 </button>
 
 <div class="keys-size" id="keysSize" aria-label="Taille des touches">
+  <button class="ov-close" data-hide="keysSize" type="button" aria-label="Masquer les curseurs de taille" title="Masquer (revient au rechargement)">×</button>
   <label title="Largeur des touches">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
     <input id="ksW" type="range" min="35" max="320" value="100" aria-label="Largeur des touches">
