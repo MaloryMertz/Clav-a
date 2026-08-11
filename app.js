@@ -1975,7 +1975,11 @@ rotateFs.addEventListener('click', async () => {
     await screen.orientation.lock('landscape');
     locked = true;
   } catch (_) { /* iOS ou verrouillage refusé */ }
-  if (!locked) setCssLandscape(true); // plan B : on tourne toute l'app à 90° en CSS
+  if (!locked) {
+    setCssLandscape(true);           // plan B : on tourne toute l'app à 90° en CSS
+    orientMode = 1;                  // cohérent avec le bouton d'orientation (Horizontal)
+    orientLabel.textContent = 'Horizontal';
+  }
   rotateDismissed = true;
   updateRotateHint();
 });
@@ -2009,8 +2013,12 @@ btnOrient.addEventListener('click', async () => {
 });
 
 window.addEventListener('resize', () => {
-  // l'appareil est physiquement passé en paysage : la rotation CSS n'a plus lieu d'être
-  if (window.innerWidth > window.innerHeight) setCssLandscape(false);
+  const landscape = window.innerWidth > window.innerHeight;
+  // Physiquement en paysage : la rotation CSS n'a plus lieu d'être.
+  // En mode « Horizontal » forcé + appareil en portrait : on (re)tourne en CSS,
+  // pour que le forçage tienne après une rotation physique aller-retour.
+  if (landscape) setCssLandscape(false);
+  else if (orientMode === 1) setCssLandscape(true);
   updateRotateHint();
 });
 updateRotateHint();
