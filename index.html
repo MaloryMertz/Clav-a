@@ -97,6 +97,14 @@
         <p class="sp-note mobile-only">La taille des touches se règle dans le mode <strong>Pleine touche</strong>.</p>
         <label class="sp-slider mobile-only" title="Un doigt doit glisser un peu avant de changer de note — évite les fausses notes"><span>Tolérance tactile</span><input type="range" id="optTouchTol" min="0" max="50" value="26" aria-label="Tolérance tactile"></label>
         <p class="sp-title">Son</p>
+        <label class="sp-slider"><span>Instrument</span>
+          <select id="optInstrument" aria-label="Instrument">
+            <option value="piano">Grand Piano</option>
+            <option value="epiano">Piano électrique</option>
+            <option value="harpsi">Clavecin</option>
+            <option value="organ">Orgue</option>
+          </select>
+        </label>
         <label class="sp-slider"><span>Réverb</span><input type="range" id="optReverb" min="0" max="100" value="25" aria-label="Niveau de réverbération">
           <button id="reverbReset" class="sp-reset" type="button" title="Réinitialiser la réverb (25)" aria-label="Réinitialiser la réverb">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>

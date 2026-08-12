@@ -201,6 +201,19 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
 }
+.settings-pop .sp-slider select {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
 /* Ascenseur permanent du menu réglages : on VOIT qu'il y a de quoi défiler */
 .settings-pop {
   scrollbar-width: thin;

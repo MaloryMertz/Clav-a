@@ -150,28 +150,58 @@ function warmUpAudio() {
 
 let transpose = 0; // demi-tons, -12..+12 (comme virtualpiano.net)
 
+/* ---------- Instruments ---------- */
+let instrument = 'piano'; // 'piano' (échantillons) | 'epiano' | 'harpsi' | 'organ' (synthèse)
+const noteFreq = midi => 440 * Math.pow(2, (midi - 69) / 12);
+
+/* Crée la ou les source(s) d'une note. Renvoie { node, start(t), stop(t),
+   decay, sustains }. Le piano utilise les échantillons Salamander ; les autres
+   sont synthétisés (aucun téléchargement, marche hors-ligne). */
+function makeInstrumentSource(sounding) {
+  if (instrument === 'piano') {
+    const s = nearestSample(sounding);
+    const src = ctx.createBufferSource();
+    src.buffer = s.buffer;
+    src.playbackRate.value = Math.pow(2, (sounding - s.midi) / 12);
+    return { node: src, start: t => src.start(t), stop: t => { try { src.stop(t); } catch (_) {} }, decay: 0, sustains: false };
+  }
+  const f = noteFreq(sounding);
+  const mix = ctx.createGain();
+  const oscs = [];
+  const add = (type, mult, g, detune = 0) => {
+    const o = ctx.createOscillator();
+    o.type = type; o.frequency.value = f * mult; if (detune) o.detune.value = detune;
+    const og = ctx.createGain(); og.gain.value = g;
+    o.connect(og); og.connect(mix); oscs.push(o);
+  };
+  let decay = 0, sustains = false;
+  if (instrument === 'epiano') { add('sine', 1, 0.9); add('sine', 2, 0.4); add('triangle', 4, 0.08); decay = 2.6; }
+  else if (instrument === 'harpsi') { add('sawtooth', 1, 0.42); add('square', 2, 0.12); add('sawtooth', 3, 0.06); decay = 1.0; }
+  else if (instrument === 'organ') { add('sine', 1, 0.5); add('sine', 2, 0.32); add('sine', 3, 0.2); add('sine', 4, 0.12); sustains = true; }
+  return { node: mix, start: t => oscs.forEach(o => o.start(t)), stop: t => oscs.forEach(o => { try { o.stop(t); } catch (_) {} }), decay, sustains };
+}
+
 function noteOn(midi, velocity = 0.72) {
-  if (midi < FIRST_MIDI || midi > LAST_MIDI || !buffers.length) return;
+  if (midi < FIRST_MIDI || midi > LAST_MIDI) return;
+  if (instrument === 'piano' && !buffers.length) return; // échantillons pas encore chargés
   resumeCtx();
   const prev = activeVoices.get(midi);
   if (prev) releaseVoice(prev, 0.06); // ré-attaque : coupe court l'ancienne note
 
   const sounding = midi + transpose;
-  const s = nearestSample(sounding);
-  const src = ctx.createBufferSource();
-  src.buffer = s.buffer;
-  src.playbackRate.value = Math.pow(2, (sounding - s.midi) / 12);
   const gain = ctx.createGain();
   const vel = Math.max(0.05, Math.min(1, velocity));
   const t0 = ctx.currentTime;
   gain.gain.setValueAtTime(0, t0);                     // rampe d'attaque courte
-  gain.gain.linearRampToValueAtTime(vel, t0 + 0.005);  // évite le clic de départ
-  src.connect(gain);
+  gain.gain.linearRampToValueAtTime(vel, t0 + 0.006);  // évite le clic de départ
+  const voice = makeInstrumentSource(sounding);
+  if (voice.decay) gain.gain.setTargetAtTime(0.0008, t0 + 0.02, voice.decay / 3); // e-piano/clavecin : décroissance
+  voice.node.connect(gain);
   gain.connect(masterGain);
-  src.start();
-  src.onended = () => gain.disconnect();
+  voice.start(t0);
+  if (instrument === 'piano') voice.node.onended = () => gain.disconnect();
 
-  activeVoices.set(midi, { src, gain });
+  activeVoices.set(midi, { stop: voice.stop, gain });
   setKeyDown(midi, true);
   showNote(midi);
   spawnNoteFx(midi);
@@ -203,7 +233,7 @@ function releaseVoice(voice, seconds) {
   voice.gain.gain.cancelScheduledValues(now);
   voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
   voice.gain.gain.setTargetAtTime(0, now, seconds / 3);
-  try { voice.src.stop(now + seconds * 4); } catch (_) {}
+  try { voice.stop(now + seconds * 4); } catch (_) {}
 }
 
 function setPedal(held) {
@@ -764,26 +794,25 @@ function beatTimeAt(k) { // garantit beatTimes[0..k] calculés (figés une fois 
 }
 
 function scheduleTone(midi, when, ring, velocity) {
-  if (midi < FIRST_MIDI || midi > LAST_MIDI || !buffers.length) return;
-  // jamais dans le passé : sinon src.start() démarre au milieu de l'échantillon
-  // (forme d'onde non nulle) → « clic ». On garde toujours une attaque propre.
+  if (midi < FIRST_MIDI || midi > LAST_MIDI) return;
+  if (instrument === 'piano' && !buffers.length) return;
+  // jamais dans le passé : sinon la source démarre au milieu de sa forme d'onde → « clic ».
   when = Math.max(when, ctx.currentTime + 0.008);
   const sounding = midi + transpose;
-  const s = nearestSample(sounding);
-  const src = ctx.createBufferSource();
-  src.buffer = s.buffer;
-  src.playbackRate.value = Math.pow(2, (sounding - s.midi) / 12);
+  const src = makeInstrumentSource(sounding);
   const gain = ctx.createGain();
   const vel = Math.max(0.05, Math.min(1, velocity));
   gain.gain.setValueAtTime(0, when);
   gain.gain.linearRampToValueAtTime(vel, when + 0.008); // attaque douce (anti-clic)
-  gain.gain.setTargetAtTime(0, when + ring, 0.14);      // extinction plus douce
-  src.connect(gain);
+  if (src.decay) gain.gain.setTargetAtTime(0.0008, when + 0.03, src.decay / 3); // e-piano/clavecin
+  gain.gain.setTargetAtTime(0, when + ring, 0.14);      // extinction bornée
+  src.node.connect(gain);
   gain.connect(masterGain);
   src.start(when);
   src.stop(when + ring + 1.0);
-  const voice = { src, gain };
-  src.onended = () => { try { gain.disconnect(); } catch (_) {} const i = autoSchedVoices.indexOf(voice); if (i >= 0) autoSchedVoices.splice(i, 1); };
+  const voice = { stop: src.stop, gain };
+  const cleanup = () => { try { gain.disconnect(); } catch (_) {} const i = autoSchedVoices.indexOf(voice); if (i >= 0) autoSchedVoices.splice(i, 1); };
+  if (instrument === 'piano') src.node.onended = cleanup; else setTimeout(cleanup, (when + ring + 1.2 - ctx.currentTime) * 1000);
   autoSchedVoices.push(voice);
 }
 
@@ -840,7 +869,7 @@ function cancelScheduledVoices() {
     try {
       v.gain.gain.cancelScheduledValues(now);
       v.gain.gain.setTargetAtTime(0, now, 0.03);
-      v.src.stop(now + 0.15);
+      v.stop(now + 0.15);
     } catch (_) {}
   });
   autoSchedVoices = [];
@@ -1554,6 +1583,12 @@ const optFx = document.getElementById('optFx');
 const optHint = document.getElementById('optHint');
 const optSig = document.getElementById('optSig');
 const optReverb = document.getElementById('optReverb');
+const optInstrument = document.getElementById('optInstrument');
+optInstrument.addEventListener('change', () => {
+  instrument = optInstrument.value;
+  uiPrefs.instrument = instrument;
+  saveUiPrefs();
+});
 const optKeysOnly = document.getElementById('optKeysOnly');
 const optCascade = document.getElementById('optCascade');
 const optLight = document.getElementById('optLight');
@@ -1562,7 +1597,7 @@ const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 26 };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 26, instrument: 'piano' };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 /* Migration unique : le panneau partition est désormais ouvert par défaut */
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
@@ -1588,6 +1623,8 @@ function applyUiPrefs() {
   if (typeof applyLightUi === 'function') applyLightUi();
   optTouchTol.value = uiPrefs.touchTol ?? 16;
   optReverb.value = uiPrefs.reverb;
+  instrument = uiPrefs.instrument || 'piano';
+  optInstrument.value = instrument;
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb); // mode léger : réverb coupée
   optKeysOnly.checked = uiPrefs.keysOnly;
   document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
