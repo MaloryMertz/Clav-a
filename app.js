@@ -522,6 +522,17 @@ function setMode(auto) {
   modeBadge.innerHTML = 'Mode&nbsp;: <b>' + (auto ? 'Auto' : 'Manuel') + '</b>';
 }
 
+/* Cascade du mode Suivre : contrairement à l'Auto (basée sur le temps), elle
+   avance quand TU joues juste. sheetHead glisse en douceur vers le pas courant
+   (sheetPos), et les prochaines notes tombent vers le clavier. */
+let sheetHead = 0;
+let sheetRaf = null;
+function sheetCascadeFrame() {
+  sheetHead += (sheetPos - sheetHead) * 0.18;       // easing vers le pas courant
+  drawCascadeCore(sheetHead, sheetSteps.length, k => sheetSteps[k], Math.floor(sheetHead));
+  if (sheetRaf !== null) sheetRaf = requestAnimationFrame(sheetCascadeFrame);
+}
+
 function startSheet() {
   sheetSteps = parseSheet(sheetInput.value);
   if (!sheetSteps.length) {
@@ -533,12 +544,17 @@ function startSheet() {
   sheetStart.disabled = true;
   sheetStop.disabled = false;
   setMode(false); // Suivre = Manuel
+  cascadeOn(true);
+  sheetHead = -CASCADE_LEAD;            // les premières notes tombent avant le début
+  if (cascadeActive) { sheetRaf = 1; sheetRaf = requestAnimationFrame(sheetCascadeFrame); }
   sheetNextStep();
 }
 
 function stopSheet(finished = false) {
   clearHints();
   sheetPos = -1;
+  if (sheetRaf !== null) { cancelAnimationFrame(sheetRaf); sheetRaf = null; }
+  cascadeOn(false);
   sheetStart.disabled = false;
   sheetStop.disabled = true;
   sheetProgress.classList.toggle('done', finished);
@@ -643,23 +659,28 @@ function cascadeRoundRect(c, x, y, w, h, r) {
   c.arcTo(x, y, x + w, y, r);
   c.closePath();
 }
-function drawCascade() {
+/* Cœur générique : dessine les blocs qui tombent. `notesAt(k)` renvoie les
+   notes (tableau de midi) du pas k ; `head` = position de lecture fractionnaire.
+   Sert à la fois à la lecture Auto et au mode Suivre. */
+function drawCascadeCore(head, length, notesAt, startIdx) {
   if (!cascadeActive) return;
   const W = cascadeCanvas.clientWidth, H = cascadeCanvas.clientHeight;
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // plafonné (perfs mobile haute densité)
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   if (cascadeCanvas.width !== Math.round(W * dpr)) sizeCascade();
   cascadeCtx.clearRect(0, 0, W, H);
   const pianoW = pianoEl.getBoundingClientRect().width || W;
   const scale = W / pianoW;
   const bh = Math.max(12, H * 0.18);
-  for (let k = visualBeat; k < autoTimeline.length; k++) {
-    const rel = k - autoHead;              // pas d'avance (>0)
+  for (let k = Math.max(0, startIdx); k < length; k++) {
+    const rel = k - head;
     if (rel > CASCADE_LEAD) break;
-    const ev = autoTimeline[k];
-    if (!ev || !ev.notes) continue;
-    const y = (1 - rel / CASCADE_LEAD) * H; // haut → touche
-    const fade = rel > CASCADE_LEAD - 0.6 ? Math.max(0, (CASCADE_LEAD - rel) / 0.6) : 1;
-    for (const midi of ev.notes) {
+    if (rel < -0.4) continue;
+    const notes = notesAt(k);
+    if (!notes || !notes.length) continue;
+    const y = (1 - rel / CASCADE_LEAD) * H;
+    const fade = rel > CASCADE_LEAD - 0.6 ? Math.max(0, (CASCADE_LEAD - rel) / 0.6)
+      : (rel < 0 ? Math.max(0, 1 + rel / 0.4) : 1);
+    for (const midi of notes) {
       const el = keyEls[midi];
       if (!el) continue;
       const x = el.offsetLeft * scale, w = el.offsetWidth * scale;
@@ -676,6 +697,9 @@ function drawCascade() {
     }
   }
   cascadeCtx.globalAlpha = 1;
+}
+function drawCascade() { // lecture Auto
+  drawCascadeCore(autoHead, autoTimeline.length, k => autoTimeline[k] && autoTimeline[k].notes, visualBeat);
 }
 
 /* Moteur Auto : le SON est programmé à l'avance sur l'horloge audio
