@@ -573,13 +573,14 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 220px;
+  max-height: min(220px, 45vh);   /* jamais plus haut que l'écran */
   overflow-y: auto;
   padding: 8px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+.midi-results .mr-item { min-height: 40px; } /* résultats bien tapables */
 .midi-results .mr-info { margin: 4px 6px; font-size: 13px; color: var(--text-dim); }
 .midi-results .mr-item {
   display: flex;
@@ -1109,11 +1110,14 @@ body.css-landscape .arena .sheet:not([hidden]) {
   min-width: 0;
   max-width: none;
   flex: 0 1 auto;
-  max-height: 42%;
+  max-height: 60%;          /* plus de place (recherche MIDI, résultats…) */
   min-height: 84px;
   resize: none;
   overflow-y: auto;
 }
+/* en paysage, la liste de résultats MIDI défile dans le panneau (pas de double
+   défilement imbriqué qui l'écrasait) */
+body.css-landscape .midi-results { max-height: none; overflow: visible; }
 body.css-landscape .arena .sheet textarea { min-height: 60px; }
 
 /* ===== Incitation à la rotation (téléphone en portrait) ===== */

@@ -568,8 +568,25 @@ const tempoDown = document.getElementById('tempoDown');
 const tempoUp = document.getElementById('tempoUp');
 const tempoVal = document.getElementById('tempoVal');
 
+/* Conversion pas ↔ BPM : on suppose ~2 pas VP par temps (croches).
+   notes/s = BPM/30 ; BPM ≈ notes/s × 30. */
+const STEPS_PER_BEAT = 2;
+const nsToBpm = ns => Math.round(ns * 60 / STEPS_PER_BEAT);
+const bpmToNs = bpm => bpm / 60 * STEPS_PER_BEAT;
 function updateTempoVal() {
-  tempoVal.textContent = Number(tempoEl.value).toLocaleString('fr-FR');
+  const ns = Number(tempoEl.value);
+  tempoVal.textContent = ns.toLocaleString('fr-FR') + ' (≈' + nsToBpm(ns) + ' bpm)';
+}
+/* Applique une directive de tempo présente dans la partition :
+   {tempo 120} ou {bpm 120} = BPM ; {vitesse 6} = notes/seconde direct. */
+function applySheetTempo(text) {
+  const m = text.match(/\{\s*(tempo|bpm|vitesse)\s*:?\s*([\d.]+)\s*\}/i);
+  if (!m) return;
+  const val = parseFloat(m[2]);
+  if (!(val > 0)) return;
+  const ns = /vitesse/i.test(m[1]) ? val : bpmToNs(val);
+  tempoEl.value = Math.min(Number(tempoEl.max), Math.max(Number(tempoEl.min), ns));
+  updateTempoVal();
 }
 function nudgeTempo(delta) {
   const step = Number(tempoEl.step) || 0.5;
@@ -838,6 +855,7 @@ function autoResetUi() {
 function startAuto() {
   stopSheet(false);
   stopAuto(false);
+  applySheetTempo(sheetInput.value); // {tempo 120} / {bpm 120} / {vitesse 6}
   autoTimeline = buildTimeline(sheetInput.value);
   if (!autoTimeline.some(s => s.notes)) {
     sheetProgress.classList.remove('done');
@@ -1437,6 +1455,7 @@ async function searchMidi() {
       });
       midiResults.appendChild(b);
     }
+    setTimeout(() => midiResults.scrollIntoView({ block: 'nearest' }), 50); // rend la liste visible
   } catch (err) {
     const down = /5\d\d/.test(err.message || '');
     midiResults.innerHTML = '<p class="mr-info">'
