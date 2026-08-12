@@ -182,6 +182,7 @@ body {
   cursor: pointer;
   min-height: 28px;
 }
+.settings-pop label.opt-off { opacity: .4; }
 .settings-pop input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -808,6 +809,7 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 /* Réglages visibles uniquement sur écrans tactiles (téléphone/tablette) */
 @media (hover: hover) and (pointer: fine) {
   .mobile-only { display: none !important; }
+  #btnOrient { display: none !important; } /* rotation inutile sur ordinateur */
 }
 
 /* Sur tactile : glisser verticalement sur le piano fait défiler la page
@@ -887,6 +889,9 @@ body.keys-only .pan-bar { display: none !important; }
 
 /* Réglages inutiles en Pleine touche (panneau, effets, aide, signature) */
 body.keys-only .pm-hide { display: none !important; }
+
+/* L'indicateur de mode ne s'affiche pas en plein écran (Pleine touche) */
+body.keys-only .mode-badge { display: none !important; }
 
 /* Sur téléphone en plein jeu, on masque les lettres du clavier sur les touches
    (inutiles au doigt) pour un clavier épuré. */

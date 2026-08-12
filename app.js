@@ -918,6 +918,7 @@ sheetStop.addEventListener('click', () => { stopAuto(false); stopSheet(false); }
 
 /* ---------- Bibliothèque de partitions ---------- */
 const libSelect = document.getElementById('libSelect');
+const libPlay = document.getElementById('libPlay');
 const libSave = document.getElementById('libSave');
 const libDelete = document.getElementById('libDelete');
 const libExport = document.getElementById('libExport');
@@ -989,6 +990,18 @@ libSelect.addEventListener('change', () => {
   }
 });
 
+/* Bouton play de la bibliothèque : lit la partition chargée (lecture auto). */
+libPlay.addEventListener('click', () => {
+  if (sheetInput.value.trim()) autoStart();
+  else sheetProgress.textContent = 'Choisissez une partition d’abord.';
+});
+
+/* Remet le titre de la bibliothèque à zéro dès que le contenu change autrement
+   que par une sélection (édition, recherche, import, enregistrement) — sinon le
+   menu affiche un titre qui ne correspond plus, ce qui prête à confusion. */
+function clearLibSelection() { if (libSelect.value) libSelect.value = ''; }
+sheetInput.addEventListener('input', clearLibSelection);
+
 /* ---------- Dossier de partitions en ligne (GitHub /partitions) ---------- */
 const FOLDER_REPO = 'MaloryMertz/Clav-a';   // owner/repo hébergeant le dossier
 const FOLDER_PATH = 'partitions';
@@ -996,6 +1009,7 @@ const FOLDER_CACHE = 'piano.folderLib';
 
 /* charge d'abord le cache (hors-ligne), puis rafraîchit depuis GitHub */
 try { folderLib = JSON.parse(localStorage.getItem(FOLDER_CACHE) || '{}') || {}; } catch (_) { folderLib = {}; }
+refreshLibSelect(); // affiche tout de suite le dossier en cache (même si l'API échoue ensuite)
 
 async function loadFolderLib() {
   let list;
@@ -1185,6 +1199,7 @@ recBtn.addEventListener('click', () => {
     const text = eventsToSheet(recEvents);
     if (text) {
       sheetInput.value = text;
+      clearLibSelection();
       sheetProgress.textContent = `Partition générée — ${recEvents.length} notes (grille : curseur tempo).`;
     } else {
       sheetProgress.textContent = 'Rien enregistré.';
@@ -1365,6 +1380,7 @@ function importMidiBuffer(buf) {
     stopAuto(false);
     stopSheet(false);
     sheetInput.value = result.text;
+    clearLibSelection();
     tempoEl.value = result.speed;
     tempoEl.dispatchEvent(new Event('input'));
     const extras = [
@@ -1545,6 +1561,7 @@ function applyUiPrefs() {
   optFx.checked = uiPrefs.fx;
   optCascade.checked = uiPrefs.cascade !== false;
   optLight.checked = !!uiPrefs.light;
+  if (typeof applyLightUi === 'function') applyLightUi();
   optTouchTol.value = uiPrefs.touchTol ?? 16;
   optReverb.value = uiPrefs.reverb;
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb); // mode léger : réverb coupée
@@ -1600,7 +1617,7 @@ optKeysOnly.addEventListener('change', () => {
   saveUiPrefs();
   applyUiPrefs();
   updateFab();
-  if (uiPrefs.keysOnly) { settingsPop.hidden = true; btnSettings.setAttribute('aria-expanded', 'false'); }
+  if (uiPrefs.keysOnly) { settingsPop.hidden = true; btnSettings.setAttribute('aria-expanded', 'false'); goHorizontalIfPortrait(); }
 });
 keysOnlyExit.addEventListener('click', () => {
   uiPrefs.keysOnly = false;
@@ -1613,12 +1630,23 @@ document.getElementById('keysQuick').addEventListener('click', () => {
   uiPrefs.keysOnly = true;
   saveUiPrefs();
   applyUiPrefs();
+  updateFab();
+  goHorizontalIfPortrait();
 });
 
 optFx.addEventListener('change', () => { uiPrefs.fx = optFx.checked; saveUiPrefs(); });
+function applyLightUi() {
+  // en mode léger, les effets gourmands sont décochés + grisés (réverb coupée)
+  optFx.disabled = optCascade.disabled = uiPrefs.light;
+  if (uiPrefs.light) { optFx.checked = false; optCascade.checked = false; }
+  else { optFx.checked = uiPrefs.fx; optCascade.checked = uiPrefs.cascade !== false; }
+  optFx.closest('label').classList.toggle('opt-off', uiPrefs.light);
+  optCascade.closest('label').classList.toggle('opt-off', uiPrefs.light);
+}
 optLight.addEventListener('change', () => {
   uiPrefs.light = optLight.checked;
   saveUiPrefs();
+  applyLightUi();
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
   cascadeOn(autoSchedTimer !== null || autoPaused); // applique/retire la cascade en cours de lecture
 });
@@ -2036,6 +2064,17 @@ btnOrient.addEventListener('click', async () => {
   btnOrient.blur();
 });
 
+/* Entrée en Pleine touche depuis le portrait : on force l'affichage horizontal
+   (verrouillage natif, ou rotation CSS en secours) pour un vrai clavier large. */
+function goHorizontalIfPortrait() {
+  if (!document.body.classList.contains('keys-only')) return;
+  if (window.innerWidth > window.innerHeight) return; // déjà en paysage
+  orientMode = 1;
+  orientLabel.textContent = 'Horizontal';
+  tryLock('landscape').then(ok => { if (!ok) setCssLandscape(true); });
+  setCssLandscape(true);
+}
+
 window.addEventListener('resize', () => {
   const landscape = window.innerWidth > window.innerHeight;
   // Physiquement en paysage : la rotation CSS n'a plus lieu d'être.
@@ -2136,6 +2175,7 @@ if (location.hash.startsWith('#p=')) {
     const text = b64urlDecode(location.hash.slice(3));
     if (text.trim()) {
       sheetInput.value = text;
+      if (typeof clearLibSelection === 'function') clearLibSelection();
       setSheetVisible(true);
       sheetProgress.textContent = 'Partition reçue par lien.';
     }
