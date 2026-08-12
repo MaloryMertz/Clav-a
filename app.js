@@ -581,12 +581,17 @@ function updateTempoVal() {
    {tempo 120} ou {bpm 120} = BPM ; {vitesse 6} = notes/seconde direct. */
 function applySheetTempo(text) {
   const m = text.match(/\{\s*(tempo|bpm|vitesse)\s*:?\s*([\d.]+)\s*\}/i);
-  if (!m) return;
-  const val = parseFloat(m[2]);
-  if (!(val > 0)) return;
-  const ns = /vitesse/i.test(m[1]) ? val : bpmToNs(val);
-  tempoEl.value = Math.min(Number(tempoEl.max), Math.max(Number(tempoEl.min), ns));
-  updateTempoVal();
+  if (m) {
+    const val = parseFloat(m[2]);
+    if (val > 0) {
+      const ns = /vitesse/i.test(m[1]) ? val : bpmToNs(val);
+      tempoEl.value = Math.min(Number(tempoEl.max), Math.max(Number(tempoEl.min), ns));
+      updateTempoVal();
+    }
+  }
+  // transposition (fiche virtualpiano.net) : {transpose 2} / {transposition -3}
+  const t = text.match(/\{\s*(?:transpose|transposition)\s*:?\s*(-?\d+)\s*\}/i);
+  if (t) setTranspose(parseInt(t[1], 10));
 }
 function nudgeTempo(delta) {
   const step = Number(tempoEl.step) || 0.5;
