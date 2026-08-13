@@ -1060,9 +1060,9 @@ libSelect.addEventListener('change', () => {
   }
 });
 
-/* Bouton play de la bibliothèque : lit la partition chargée (lecture auto). */
+/* Bouton play : lit la partition chargée (lecture auto). */
 libPlay.addEventListener('click', () => {
-  if (sheetInput.value.trim()) autoStart();
+  if (sheetInput.value.trim()) startAuto();
   else sheetProgress.textContent = 'Choisissez une partition d’abord.';
 });
 
@@ -1636,6 +1636,9 @@ try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}'
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
 /* Tactile moins sensible par défaut (ancienne valeur 16 → 26) */
 if (!uiPrefs.tolDefaultV2) { if ((uiPrefs.touchTol ?? 16) <= 16) uiPrefs.touchTol = 26; uiPrefs.tolDefaultV2 = true; }
+/* Sur mobile : réverb coupée par défaut (débranche le convolver = moins de CPU,
+   moins de grésillement). Une seule fois — l'utilisateur peut la remonter. */
+if (!uiPrefs.reverbMobileV2) { if (matchMedia('(pointer: coarse)').matches) uiPrefs.reverb = 0; uiPrefs.reverbMobileV2 = true; }
 /* Ceux qui avaient déjà réglé la largeur gardent leur valeur (prime partout) */
 if (uiPrefs.keyWTouched === undefined) uiPrefs.keyWTouched = (uiPrefs.keySize ?? 100) !== 100;
 function saveUiPrefs() {
@@ -2250,6 +2253,15 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 /* Stockage persistant : protège la bibliothèque du nettoyage automatique */
 navigator.storage?.persist?.().catch(() => {});
+
+/* En arrière-plan (onglet caché / app minimisée), le navigateur throttle la page
+   et le thread audio manque de CPU → grésillement. On coupe la réverb (convolver,
+   de loin le plus gros coût) tant que la page n'est pas visible, et on la rétablit
+   au retour selon le réglage courant. La lecture Auto continue (scheduler + lookahead). */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) setReverb(0);
+  else setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
+});
 
 /* Numéro de version (lu depuis le cache du service worker) dans les réglages */
 caches.keys().then(keys => {
