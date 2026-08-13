@@ -50,19 +50,24 @@ function sampleMidi(name) {
   return (parseInt(m[3], 10) + 1) * 12 + base + (m[2] ? 1 : 0);
 }
 
-/* ---------- Moteur audio ---------- */
-const ctx = new (window.AudioContext || window.webkitAudioContext)();
+/* ---------- Moteur audio ----------
+   Sur mobile (écran tactile), un buffer plus large ('playback') réduit
+   fortement les sous-alimentations (= grésillement), au prix d'un peu de
+   latence — acceptable. Sur PC, on garde 'interactive' (réactif). */
+const _coarse = matchMedia('(pointer: coarse)').matches;
+let ctx;
+try { ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: _coarse ? 'playback' : 'interactive' }); }
+catch (_) { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
 const masterGain = ctx.createGain();
-const compressor = ctx.createDynamicsCompressor();
-compressor.threshold.value = -14;
-compressor.knee.value = 20;
-compressor.ratio.value = 3;
+const compressor = ctx.createDynamicsCompressor(); // glue léger (sert aussi au métronome)
+compressor.threshold.value = -12;
+compressor.knee.value = 18;
+compressor.ratio.value = 4;
 compressor.attack.value = 0.003;
-compressor.release.value = 0.25;
-/* Réverbération de salle : réponse impulsionnelle générée (bruit décroissant).
-   Impulsion courte = convolution bien moins gourmande en CPU (anti-grésillement
-   sur mobile où le buffer audio se sous-alimente sous charge). */
-function makeImpulse(seconds = 1.6, decay = 2.2) {
+compressor.release.value = 0.2;
+
+/* Réverbération : impulsion courte (convolution moins gourmande en CPU). */
+function makeImpulse(seconds = 1.1, decay = 2.2) {
   const rate = ctx.sampleRate;
   const len = Math.floor(rate * seconds);
   const buf = ctx.createBuffer(2, len, rate);
@@ -76,37 +81,36 @@ const convolver = ctx.createConvolver();
 convolver.buffer = makeImpulse();
 const dryGain = ctx.createGain();
 const wetGain = ctx.createGain();
-wetGain.gain.value = 0.22;
+wetGain.gain.value = 0;
 
-/* Limiteur : rabat les crêtes fortes sur les accords denses. */
-const limiter = ctx.createDynamicsCompressor();
-limiter.threshold.value = -3;
-limiter.knee.value = 0;
-limiter.ratio.value = 20;
-limiter.attack.value = 0.002;
-limiter.release.value = 0.1;
-
-/* Écrêteur doux (WaveShaper tanh) : sample-exact, il est IMPOSSIBLE de
-   saturer/grésiller — les crêtes qui échappent au limiteur sont arrondies
-   au lieu d'être tronquées brutalement (source des « clics »). */
+/* Écrêteur doux (WaveShaper tanh) : sample-exact, empêche toute saturation.
+   Remplace le limiteur (un compresseur en moins = moins de CPU). */
 const softClip = ctx.createWaveShaper();
 const _curve = new Float32Array(1024);
 for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; _curve[i] = Math.tanh(x * 1.5); }
 softClip.curve = _curve;
-softClip.oversample = 'none'; // pas de sur-échantillonnage : moins de CPU
+softClip.oversample = 'none';
 
 masterGain.connect(dryGain);
 dryGain.connect(compressor);
-masterGain.connect(convolver);
 convolver.connect(wetGain);
 wetGain.connect(compressor);
-compressor.connect(limiter);
-limiter.connect(softClip);
+compressor.connect(softClip);
 softClip.connect(ctx.destination);
 masterGain.gain.value = 0.6;
 
+/* Le convolver est débranché quand la réverb est à 0 : la convolution est
+   l'opération la plus lourde ; la garder branchée à 0 gâchait du CPU (le vrai
+   frein en Mode léger). On (re)branche seulement si la réverb est active. */
+let reverbConnected = false;
 function setReverb(pct) { // 0..100
   wetGain.gain.setTargetAtTime(pct / 100 * 0.9, ctx.currentTime, 0.05);
+  const want = pct > 0.5;
+  if (want && !reverbConnected) { masterGain.connect(convolver); reverbConnected = true; }
+  else if (!want && reverbConnected) {
+    reverbConnected = false;
+    setTimeout(() => { if (!reverbConnected) { try { masterGain.disconnect(convolver); } catch (_) {} } }, 400);
+  }
 }
 
 const buffers = [];            // [{ midi, buffer }] trié par midi
