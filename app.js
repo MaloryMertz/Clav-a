@@ -181,14 +181,14 @@ function makeInstrumentSource(sounding) {
   };
   let decay = 0, sustains = false;
   if (instrument === 'epiano') {          // Rhodes : sinus doux + cloche
-    add('sine', 1, 0.55); add('sine', 2, 0.16); add('sine', 4, 0.05, 3);
+    add('sine', 1, 0.4); add('sine', 2, 0.12); add('sine', 4, 0.04, 3);
     out.frequency.value = 2600; decay = 2.3;
   } else if (instrument === 'harpsi') {   // clavecin : pincé mais filtré
     add('triangle', 1, 0.42); add('sawtooth', 1, 0.1, 4); add('triangle', 2, 0.1);
     out.frequency.value = 3800; decay = 0.85;
-  } else if (instrument === 'organ') {    // orgue : sinus (tirettes)
-    add('sine', 1, 0.34); add('sine', 2, 0.22); add('sine', 3, 0.14); add('sine', 4, 0.08);
-    out.frequency.value = 4200; sustains = true;
+  } else if (instrument === 'organ') {    // orgue : sinus (tirettes) — niveau bas car soutenu + joué en accords
+    add('sine', 1, 0.2); add('sine', 2, 0.12); add('sine', 3, 0.07); add('sine', 4, 0.04);
+    out.frequency.value = 3200; sustains = true;
   }
   return { node: out, start: t => oscs.forEach(o => o.start(t)), stop: t => oscs.forEach(o => { try { o.stop(t); } catch (_) {} }), decay, sustains, synth: true };
 }
@@ -1488,24 +1488,43 @@ async function searchMidi() {
     }
     midiResults.innerHTML = '';
     for (const it of items.slice(0, 12)) {
+      const row = document.createElement('div');
+      row.className = 'mr-row';
+
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'mr-item';
+      b.title = 'Charger dans la partition';
       b.innerHTML = `<span>${escHtml(it.name)}</span><small>${(it.plays || 0).toLocaleString('fr-FR')} lectures</small>`;
-      b.addEventListener('click', async () => {
-        b.disabled = true;
+
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.className = 'mr-play';
+      play.title = 'Télécharger et lire tout de suite';
+      play.setAttribute('aria-label', `Lire « ${it.name} »`);
+      play.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+
+      /* andPlay=true : télécharge, importe puis lance la lecture auto. */
+      const load = async (andPlay) => {
+        b.disabled = play.disabled = true;
         sheetProgress.classList.remove('done');
         sheetProgress.textContent = `Téléchargement de « ${it.name} »…`;
         try {
           const buf = await (await fetchWithTimeoutSafe('https://bitmidi.com' + it.downloadUrl)).arrayBuffer();
           importMidiBuffer(buf);
           midiResults.hidden = true;
+          if (andPlay && sheetInput.value.trim()) startAuto();
         } catch (err) {
           sheetProgress.textContent = `Téléchargement impossible : ${err.message}`;
         }
-        b.disabled = false;
-      });
-      midiResults.appendChild(b);
+        b.disabled = play.disabled = false;
+      };
+      b.addEventListener('click', () => load(false));
+      play.addEventListener('click', () => load(true));
+
+      row.appendChild(b);
+      row.appendChild(play);
+      midiResults.appendChild(row);
     }
     setTimeout(() => midiResults.scrollIntoView({ block: 'nearest' }), 50); // rend la liste visible
   } catch (err) {

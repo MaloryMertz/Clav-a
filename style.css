@@ -612,8 +612,26 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 }
 .midi-results .mr-item:hover { border-color: var(--accent-deep); background: var(--surface); }
 .midi-results .mr-item:focus-visible { outline: none; box-shadow: var(--focus); }
-.midi-results .mr-item[disabled] { opacity: .5; cursor: wait; }
+.midi-results .mr-item[disabled], .midi-results .mr-play[disabled] { opacity: .5; cursor: wait; }
 .midi-results .mr-item small { color: var(--text-dim); white-space: nowrap; }
+.midi-results .mr-row { display: flex; align-items: stretch; gap: 6px; }
+.midi-results .mr-row .mr-item { flex: 1; min-width: 0; }
+.midi-results .mr-play {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-height: 40px;
+  color: var(--accent-deep);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.midi-results .mr-play svg { width: 18px; height: 18px; }
+.midi-results .mr-play:hover { border-color: var(--accent-deep); background: var(--surface); }
+.midi-results .mr-play:focus-visible { outline: none; box-shadow: var(--focus); }
 
 #recBtn svg { color: #ef4444; }
 #recBtn.recording {
