@@ -166,19 +166,27 @@ function makeInstrumentSource(sounding) {
     return { node: src, start: t => src.start(t), stop: t => { try { src.stop(t); } catch (_) {} }, decay: 0, sustains: false };
   }
   const f = noteFreq(sounding);
-  const mix = ctx.createGain();
+  const out = ctx.createBiquadFilter(); // passe-bas : adoucit la dureté des synthés
+  out.type = 'lowpass'; out.Q.value = 0.4;
   const oscs = [];
   const add = (type, mult, g, detune = 0) => {
     const o = ctx.createOscillator();
     o.type = type; o.frequency.value = f * mult; if (detune) o.detune.value = detune;
     const og = ctx.createGain(); og.gain.value = g;
-    o.connect(og); og.connect(mix); oscs.push(o);
+    o.connect(og); og.connect(out); oscs.push(o);
   };
   let decay = 0, sustains = false;
-  if (instrument === 'epiano') { add('sine', 1, 0.9); add('sine', 2, 0.4); add('triangle', 4, 0.08); decay = 2.6; }
-  else if (instrument === 'harpsi') { add('sawtooth', 1, 0.42); add('square', 2, 0.12); add('sawtooth', 3, 0.06); decay = 1.0; }
-  else if (instrument === 'organ') { add('sine', 1, 0.5); add('sine', 2, 0.32); add('sine', 3, 0.2); add('sine', 4, 0.12); sustains = true; }
-  return { node: mix, start: t => oscs.forEach(o => o.start(t)), stop: t => oscs.forEach(o => { try { o.stop(t); } catch (_) {} }), decay, sustains };
+  if (instrument === 'epiano') {          // Rhodes : sinus doux + cloche
+    add('sine', 1, 0.55); add('sine', 2, 0.16); add('sine', 4, 0.05, 3);
+    out.frequency.value = 2600; decay = 2.3;
+  } else if (instrument === 'harpsi') {   // clavecin : pincé mais filtré
+    add('triangle', 1, 0.42); add('sawtooth', 1, 0.1, 4); add('triangle', 2, 0.1);
+    out.frequency.value = 3800; decay = 0.85;
+  } else if (instrument === 'organ') {    // orgue : sinus (tirettes)
+    add('sine', 1, 0.34); add('sine', 2, 0.22); add('sine', 3, 0.14); add('sine', 4, 0.08);
+    out.frequency.value = 4200; sustains = true;
+  }
+  return { node: out, start: t => oscs.forEach(o => o.start(t)), stop: t => oscs.forEach(o => { try { o.stop(t); } catch (_) {} }), decay, sustains, synth: true };
 }
 
 function noteOn(midi, velocity = 0.72) {
@@ -201,7 +209,7 @@ function noteOn(midi, velocity = 0.72) {
   voice.start(t0);
   if (instrument === 'piano') voice.node.onended = () => gain.disconnect();
 
-  activeVoices.set(midi, { stop: voice.stop, gain });
+  activeVoices.set(midi, { stop: voice.stop, gain, synth: !!voice.synth, sustains: !!voice.sustains });
   setKeyDown(midi, true);
   showNote(midi);
   spawnNoteFx(midi);
@@ -216,6 +224,12 @@ function noteOff(midi) {
   setKeyDown(midi, false);
   if (!voice) return;
   activeVoices.delete(midi);
+  // Synthés : on relâche TOUJOURS (jamais de bourdon infini, même pédale enfoncée).
+  // L'orgue (sustains) tient tant que la touche est pressée puis s'arrête net.
+  if (voice.synth) {
+    releaseVoice(voice, sustainOn() ? (voice.sustains ? 0.35 : 0.6) : (voice.sustains ? 0.15 : 0.3));
+    return;
+  }
   if (sustainOn()) {
     sustainedVoices.add(voice);
     while (sustainedVoices.size > MAX_SUSTAINED) {
@@ -1584,10 +1598,25 @@ const optHint = document.getElementById('optHint');
 const optSig = document.getElementById('optSig');
 const optReverb = document.getElementById('optReverb');
 const optInstrument = document.getElementById('optInstrument');
-optInstrument.addEventListener('change', () => {
-  instrument = optInstrument.value;
-  uiPrefs.instrument = instrument;
+const btnInstrument = document.getElementById('btnInstrument');
+const instrumentText = document.getElementById('instrumentText');
+const INSTRUMENTS = [
+  ['piano', 'Grand Piano'], ['epiano', 'Piano élec.'], ['harpsi', 'Clavecin'], ['organ', 'Orgue'],
+];
+function setInstrument(name) {
+  if (!INSTRUMENTS.some(([v]) => v === name)) name = 'piano';
+  instrument = name;
+  uiPrefs.instrument = name;
   saveUiPrefs();
+  optInstrument.value = name;
+  const label = (INSTRUMENTS.find(([v]) => v === name) || [])[1] || 'Grand Piano';
+  if (instrumentText) instrumentText.textContent = label;
+}
+optInstrument.addEventListener('change', () => setInstrument(optInstrument.value));
+btnInstrument.addEventListener('click', () => {          // bouton rapide : instrument suivant
+  const i = INSTRUMENTS.findIndex(([v]) => v === instrument);
+  setInstrument(INSTRUMENTS[(i + 1) % INSTRUMENTS.length][0]);
+  btnInstrument.blur();
 });
 const optKeysOnly = document.getElementById('optKeysOnly');
 const optCascade = document.getElementById('optCascade');
@@ -1623,8 +1652,7 @@ function applyUiPrefs() {
   if (typeof applyLightUi === 'function') applyLightUi();
   optTouchTol.value = uiPrefs.touchTol ?? 16;
   optReverb.value = uiPrefs.reverb;
-  instrument = uiPrefs.instrument || 'piano';
-  optInstrument.value = instrument;
+  if (typeof setInstrument === 'function') setInstrument(uiPrefs.instrument || 'piano');
   setReverb(uiPrefs.light ? 0 : uiPrefs.reverb); // mode léger : réverb coupée
   optKeysOnly.checked = uiPrefs.keysOnly;
   document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
