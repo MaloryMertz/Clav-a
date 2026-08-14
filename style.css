@@ -576,18 +576,23 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 .sheet.max .save-row      { order: -2; }
 .sheet.max .midi-search   { order: -2; }
 .sheet.max .midi-results  { order: -2; }
-.sheet.max textarea       { order: -1; flex: 1; resize: none; font-size: 18px; line-height: 1.8; }
+/* La partition remplit tout l'espace ; width/height en !important pour écraser
+   la taille figée que l'utilisateur a pu donner à la zone via le resize (styles inline). */
+.sheet.max textarea       { order: -1; flex: 1; resize: none; width: 100% !important; height: auto !important; min-height: 0; font-size: 18px; line-height: 1.8; }
 .sheet.max .sheet-actions { order: 0; }
 
-/* Le bouton ⌄ « outils » n'apparaît qu'en agrandi ; il pousse ⌄ + ⛶ à droite. */
+/* Le bouton « détacher » reste visible dans l'en-tête agrandi, groupé à droite. */
+.sheet-lib .detachbtn { margin-left: auto; }
+
+/* Le bouton ⌄ « outils » n'apparaît qu'en agrandi. */
 .toolsbtn { display: none; }
-.sheet.max .toolsbtn { display: inline-flex; margin-left: auto; }
+.sheet.max .toolsbtn { display: inline-flex; }
 .sheet.max .toolsbtn svg { transition: transform .18s; }
 .sheet.max.max-tools .toolsbtn svg { transform: rotate(180deg); }
 
 /* Tiroir replié par défaut : on masque les contrôles bibliothèque + recherche,
-   en gardant seulement ⌄ (outils) et ⛶ (fermer) dans l'en-tête. */
-.sheet.max:not(.max-tools) .sheet-lib > :not(.maxbtn):not(.toolsbtn) { display: none; }
+   en gardant ⤢ (détacher), ⌄ (outils) et ⛶ (fermer) dans l'en-tête. */
+.sheet.max:not(.max-tools) .sheet-lib > :not(.maxbtn):not(.toolsbtn):not(.detachbtn) { display: none; }
 .sheet.max:not(.max-tools) .save-row,
 .sheet.max:not(.max-tools) .midi-search,
 .sheet.max:not(.max-tools) .midi-results { display: none; }

@@ -168,10 +168,14 @@
             <button id="libDelete" class="lm-item" type="button" role="menuitem" title="Supprimer la partition sélectionnée">Supprimer</button>
             <button id="libExport" class="lm-item" type="button" role="menuitem" title="Exporter toute la bibliothèque en fichier">Exporter</button>
             <button id="libImport" class="lm-item" type="button" role="menuitem" title="Importer un fichier de partitions">Importer</button>
-            <button id="sheetDetach" class="lm-item" type="button" role="menuitem" title="Ouvrir la partition dans un onglet séparé, synchronisé en direct">Détacher dans un onglet</button>
           </div>
         </div>
         <input type="file" id="libFile" accept="application/json,.json" hidden>
+        <button id="sheetDetach" class="ctl-btn sm2 sq detachbtn" type="button" title="Détacher la partition dans un onglet séparé, synchronisé en direct" aria-label="Détacher dans un onglet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 4h6v6M20 4l-8 8M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>
+          </svg>
+        </button>
         <button id="sheetTools" class="ctl-btn sm2 sq toolsbtn" type="button" aria-pressed="false" title="Afficher/masquer les outils (bibliothèque, recherche…)" aria-label="Afficher ou masquer les outils">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M6 9l6 6 6-6"/>
