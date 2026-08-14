@@ -536,6 +536,30 @@ function parseSheet(text) {
   return steps;
 }
 
+/* Comme parseSheet mais renvoie la plage de caractères de chaque pas (note ou
+   accord) — 1:1 avec parseSheet et avec autoTimeline. Sert à l'onglet « suivi »
+   pour surligner la note courante sans re-parser (pas besoin de vpCharToMidi côté onglet). */
+function parseSheetTokens(text) {
+  const toks = [];
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '{') { const end = text.indexOf('}', i); i = end === -1 ? text.length : end + 1; continue; }
+    if (c === '[') {
+      const end = text.indexOf(']', i);
+      const close = end === -1 ? text.length : end;
+      const has = [...text.slice(i + 1, close)].some(ch => vpCharToMidi[ch] !== undefined);
+      const next = end === -1 ? text.length : end + 1;
+      if (has) toks.push({ start: i, end: next });
+      i = next;
+    } else {
+      if (vpCharToMidi[c] !== undefined) toks.push({ start: i, end: i + 1 });
+      i++;
+    }
+  }
+  return toks;
+}
+
 function clearHints() {
   sheetExpected.forEach(m => keyEls[m].classList.remove('hint'));
   sheetExpected = new Set();
@@ -552,6 +576,7 @@ function sheetNextStep() {
   sheetExpected.forEach(m => keyEls[m].classList.add('hint'));
   sheetProgress.classList.remove('done');
   sheetProgress.textContent = `${sheetPos + 1} / ${sheetSteps.length}`;
+  broadcastPos(sheetPos, sheetSteps.length, true, 'suivre'); // onglet « suivi »
 }
 
 function sheetNotePlayed(midi) {
@@ -607,6 +632,7 @@ function stopSheet(finished = false) {
   sheetStop.disabled = true;
   sheetProgress.classList.toggle('done', finished);
   sheetProgress.textContent = finished ? 'Partition terminée, bravo !' : '';
+  broadcastStop();
 }
 
 /* ---------- Lecture automatique de la partition ---------- */
@@ -873,6 +899,7 @@ function autoVisualFrame() {
       setTimeout(() => notes.forEach(m => setKeyDown(m, false)), autoStepDur(visualBeat) * 900);
       sheetProgress.textContent = `auto ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`
         + (ev.mul !== 1 ? ` ×${ev.mul}` : '');
+      broadcastPos(visualBeat, autoTimeline.length, true, 'auto'); // onglet « suivi »
     }
     visualBeat++;
   }
@@ -945,6 +972,7 @@ function finishAuto() {
   autoResetUi();
   sheetProgress.classList.add('done');
   sheetProgress.textContent = 'Partition terminée.';
+  broadcastStop();
 }
 
 /* Arrêt manuel : coupe tout, y compris les notes déjà programmées. */
@@ -959,6 +987,7 @@ function stopAuto(finished = false) {
     sheetProgress.classList.add('done');
     sheetProgress.textContent = 'Partition terminée.';
   }
+  broadcastStop();
 }
 
 autoPause.addEventListener('click', () => {
@@ -1059,13 +1088,14 @@ libSelect.addEventListener('change', () => {
     const lib = loadLib();
     if (lib[v] !== undefined) sheetInput.value = lib[v]; // n'interrompt pas la lecture
   }
+  broadcastSheet(); // synchronise l'onglet « suivi » détaché
 });
 
 /* Remet le titre de la bibliothèque à zéro dès que le contenu change autrement
    que par une sélection (édition, recherche, import, enregistrement) — sinon le
    menu affiche un titre qui ne correspond plus, ce qui prête à confusion. */
 function clearLibSelection() { if (libSelect.value) libSelect.value = ''; }
-sheetInput.addEventListener('input', clearLibSelection);
+sheetInput.addEventListener('input', () => { clearLibSelection(); broadcastSheet(); });
 
 /* ---------- Dossier de partitions en ligne (GitHub /partitions) ---------- */
 const FOLDER_REPO = 'MaloryMertz/Clav-a';   // owner/repo hébergeant le dossier
@@ -1466,6 +1496,7 @@ function importMidiBuffer(buf) {
     stopSheet(false);
     sheetInput.value = result.text;
     clearLibSelection();
+    broadcastSheet();
     tempoEl.value = result.speed;
     tempoEl.dispatchEvent(new Event('input'));
     const extras = [
@@ -1582,17 +1613,52 @@ sheetPanel.addEventListener('drop', e => {
 
 /* ---------- Agrandissement du panneau partition ---------- */
 const sheetMax = document.getElementById('sheetMax');
+const sheetTools = document.getElementById('sheetTools');
 
 const SHEET_MAX_ICON = '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'; // agrandir
 const SHEET_CLOSE_ICON = '<path d="M18 6 6 18M6 6l12 12"/>';                   // croix (fermer)
+function setSheetTools(on) { // tiroir « outils » de la vue agrandie
+  sheetPanel.classList.toggle('max-tools', on);
+  sheetTools.setAttribute('aria-pressed', String(on));
+}
 function setSheetMax(on) {
   sheetPanel.classList.toggle('max', on);
+  sheetPanel.classList.remove('max-tools'); // toujours replié par défaut à l'agrandissement
+  sheetTools.setAttribute('aria-pressed', 'false');
   sheetMax.setAttribute('aria-pressed', String(on));
   sheetMax.title = on ? 'Réduire le panneau' : 'Agrandir le panneau en plein écran';
   const svg = sheetMax.querySelector('svg');
   if (svg) svg.innerHTML = on ? SHEET_CLOSE_ICON : SHEET_MAX_ICON;
 }
 sheetMax.addEventListener('click', () => setSheetMax(!sheetPanel.classList.contains('max')));
+sheetTools.addEventListener('click', () => setSheetTools(!sheetPanel.classList.contains('max-tools')));
+
+/* ---------- Détachement : onglet « suivi » synchronisé (BroadcastChannel) ---------- */
+const followCh = ('BroadcastChannel' in window) ? new BroadcastChannel('clavea-follow') : null;
+const sheetDetach = document.getElementById('sheetDetach');
+function sheetTitle() {
+  const v = libSelect.value;
+  return v ? v.replace(/^@/, '') : 'Partition';
+}
+function broadcastSheet() {
+  if (!followCh) return;
+  followCh.postMessage({ type: 'sheet', title: sheetTitle(), text: sheetInput.value, tokens: parseSheetTokens(sheetInput.value) });
+}
+function broadcastPos(idx, total, playing, mode) {
+  if (followCh) followCh.postMessage({ type: 'pos', idx, total, playing, mode });
+}
+function broadcastStop() { if (followCh) followCh.postMessage({ type: 'stop' }); }
+if (followCh) {
+  // Un onglet « suivi » qui vient de s'ouvrir demande l'état courant.
+  followCh.onmessage = e => { if (e.data && e.data.type === 'hello') broadcastSheet(); };
+}
+if (sheetDetach) {
+  sheetDetach.addEventListener('click', () => {
+    broadcastSheet();
+    window.open('follow.html', 'clavea-follow'); // nom fixe : réutilise l'onglet s'il est déjà ouvert
+    closeLibMore();
+  });
+}
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape' && sheetPanel.classList.contains('max')) setSheetMax(false);
 });
@@ -1891,7 +1957,7 @@ document.addEventListener('pointerdown', e => {
    reste entièrement dédié au piano (Espace = pédale, jamais un bouton). */
 [btnSustain, btnLabels, volumeEl, trDown, trUp, trVal, btnSheet,
  sheetStart, sheetStop, autoStart, autoPause, tempoEl, tempoDown, tempoUp,
- recBtn, shareBtn, libSave, libDelete, libExport, libImport, libMore, midiImport, midiSearchBtn, sheetMax, ...dockButtons].forEach(el =>
+ recBtn, shareBtn, libSave, libDelete, libExport, libImport, libMore, midiImport, midiSearchBtn, sheetTools, sheetMax, ...dockButtons].forEach(el =>
   el.addEventListener('pointerup', () => el.blur())
 );
 

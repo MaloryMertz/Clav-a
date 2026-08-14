@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<title>Clavéa — Suivi de partition</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0b0d12; --bg-2: #14161d; --surface: #1a1d26; --border: #2a2e3a;
+    --text: #e8e6e1; --text-dim: #9a9890; --accent: #f59e0b; --accent-deep: #d97706;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    background: rgba(11, 13, 18, .6); backdrop-filter: blur(6px);
+  }
+  .logo { width: 24px; height: 24px; color: var(--accent); flex-shrink: 0; }
+  h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+  #title { color: var(--text-dim); font-weight: 500; }
+  #status {
+    margin-left: auto; display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+  }
+  #badge {
+    padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border); color: var(--text-dim);
+  }
+  #badge.play { color: #0b0d12; background: var(--accent); border-color: var(--accent); }
+  main {
+    flex: 1; overflow-y: auto; padding: clamp(16px, 4vw, 48px);
+    scroll-behavior: smooth;
+  }
+  #sheet {
+    max-width: 1100px; margin: 0 auto;
+    font-size: clamp(20px, 3.4vw, 34px); line-height: 2;
+    letter-spacing: .5px; white-space: pre-wrap; word-break: break-word;
+  }
+  .tok { border-radius: 6px; padding: 1px 3px; transition: color .1s, background .1s; }
+  .tok.done { color: var(--text-dim); }
+  .tok.now {
+    color: #0b0d12; background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, .35);
+  }
+  #empty {
+    max-width: 620px; margin: 12vh auto 0; text-align: center; color: var(--text-dim);
+    font-size: 16px; line-height: 1.7;
+  }
+  #empty b { color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+  </svg>
+  <h1>Clavéa <span id="title">— en attente…</span></h1>
+  <div id="status"><span id="count"></span><span id="badge">Hors lecture</span></div>
+</header>
+<main>
+  <div id="empty">
+    Onglet de <b>suivi de partition</b>.<br>
+    Chargez une partition dans Clavéa et lancez <b>Suivre</b> ou <b>Auto</b> :
+    la note en cours s'illumine ici, en direct.
+  </div>
+  <div id="sheet" hidden></div>
+</main>
+<script>
+  const ch = ('BroadcastChannel' in window) ? new BroadcastChannel('clavea-follow') : null;
+  const sheetEl = document.getElementById('sheet');
+  const emptyEl = document.getElementById('empty');
+  const titleEl = document.getElementById('title');
+  const badgeEl = document.getElementById('badge');
+  const countEl = document.getElementById('count');
+  let tokEls = [];       // spans, un par pas
+  let curIdx = -1;
+
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  function renderSheet(text, tokens, title) {
+    titleEl.textContent = title ? '— ' + title : '';
+    if (!text || !tokens || !tokens.length) {
+      sheetEl.hidden = true; emptyEl.hidden = false; tokEls = []; curIdx = -1; return;
+    }
+    emptyEl.hidden = true; sheetEl.hidden = false;
+    let html = '', last = 0;
+    tokens.forEach((t, k) => {
+      if (t.start > last) html += esc(text.slice(last, t.start));
+      html += '<span class="tok" data-i="' + k + '">' + esc(text.slice(t.start, t.end)) + '</span>';
+      last = t.end;
+    });
+    if (last < text.length) html += esc(text.slice(last));
+    sheetEl.innerHTML = html;
+    tokEls = [...sheetEl.querySelectorAll('.tok')];
+    curIdx = -1;
+  }
+
+  function setPos(idx) {
+    if (idx === curIdx) return;
+    tokEls.forEach((el, k) => {
+      el.classList.toggle('now', k === idx);
+      el.classList.toggle('done', k < idx);
+    });
+    curIdx = idx;
+    const el = tokEls[idx];
+    if (el) {
+      const r = el.getBoundingClientRect(), m = document.querySelector('main').getBoundingClientRect();
+      if (r.top < m.top + 80 || r.bottom > m.bottom - 80) el.scrollIntoView({ block: 'center' });
+    }
+  }
+
+  function setBadge(text, playing) {
+    badgeEl.textContent = text;
+    badgeEl.classList.toggle('play', !!playing);
+  }
+
+  if (ch) {
+    ch.onmessage = e => {
+      const d = e.data; if (!d) return;
+      if (d.type === 'sheet') { renderSheet(d.text, d.tokens, d.title); setBadge('Prêt', false); countEl.textContent = ''; }
+      else if (d.type === 'pos') {
+        setPos(d.idx);
+        setBadge(d.mode === 'auto' ? 'Lecture auto' : 'Suivre', d.playing);
+        countEl.textContent = (Math.min(d.idx + 1, d.total)) + ' / ' + d.total;
+      }
+      else if (d.type === 'stop') { setPos(-1); setBadge('Hors lecture', false); }
+    };
+    // Demande l'état courant à l'app principale.
+    ch.postMessage({ type: 'hello' });
+  } else {
+    emptyEl.innerHTML = 'Votre navigateur ne supporte pas la synchronisation entre onglets (BroadcastChannel).';
+  }
+</script>
+</body>
+</html>

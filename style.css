@@ -501,16 +501,26 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
   max-width: 100%;
   resize: both;   /* agrandissable librement, hauteur ET largeur */
   min-height: 64px;
-  padding: 10px 12px;
+  padding: 10px 12px 16px;   /* place pour la poignée en bas à droite */
   font: inherit;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
-  background: var(--bg);
+  /* Poignée de redimensionnement bien visible : chevrons accent en bas à droite */
+  background-color: var(--bg);
+  background-image: linear-gradient(135deg,
+    transparent 0 3px, var(--accent) 3px 5px,
+    transparent 5px 8px, var(--accent) 8px 10px,
+    transparent 10px 13px, var(--accent) 13px 15px, transparent 15px);
+  background-repeat: no-repeat;
+  background-position: right 4px bottom 4px;
+  background-size: 16px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
 }
 .sheet textarea:focus-visible { outline: none; box-shadow: var(--focus); }
+/* Zone de préhension agrandie et transparente (les chevrons ci-dessus font le visuel) */
+.sheet textarea::-webkit-resizer { background: transparent; }
 .sheet-lib { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sheet-lib .maxbtn { margin-left: auto; min-width: 38px; justify-content: center; }
 .sheet-lib .maxbtn svg { width: 15px; height: 15px; }
@@ -550,7 +560,8 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
 .lm-item:focus-visible { outline: none; box-shadow: var(--focus); }
 .lm-item.danger { border-color: #dc2626; color: #fecaca; }
 
-/* Panneau maximisé : occupe toute la fenêtre sous la barre du haut */
+/* Panneau maximisé : lecture épurée — partition en GRAND + barre de lecture ;
+   les outils (bibliothèque, recherche…) sont repliés dans un tiroir dépliable via ⌄. */
 .sheet.max {
   position: fixed;
   inset: 80px 18px 18px 18px;
@@ -560,12 +571,30 @@ body[data-labels="notes"] .key.c4::after { bottom: 30px; }
   resize: none;
   box-shadow: 0 30px 80px rgba(0, 0, 0, .75), 0 0 0 1px var(--border);
 }
-.sheet.max textarea {
-  flex: 1;
-  resize: none;
-  font-size: 16px;
-  line-height: 1.7;
-}
+/* Ordre en agrandi : en-tête (outils/fermer) → partition → lecture en bas */
+.sheet.max .sheet-lib     { order: -3; justify-content: flex-end; }
+.sheet.max .save-row      { order: -2; }
+.sheet.max .midi-search   { order: -2; }
+.sheet.max .midi-results  { order: -2; }
+.sheet.max textarea       { order: -1; flex: 1; resize: none; font-size: 18px; line-height: 1.8; }
+.sheet.max .sheet-actions { order: 0; }
+
+/* Le bouton ⌄ « outils » n'apparaît qu'en agrandi ; il pousse ⌄ + ⛶ à droite. */
+.toolsbtn { display: none; }
+.sheet.max .toolsbtn { display: inline-flex; margin-left: auto; }
+.sheet.max .toolsbtn svg { transition: transform .18s; }
+.sheet.max.max-tools .toolsbtn svg { transform: rotate(180deg); }
+
+/* Tiroir replié par défaut : on masque les contrôles bibliothèque + recherche,
+   en gardant seulement ⌄ (outils) et ⛶ (fermer) dans l'en-tête. */
+.sheet.max:not(.max-tools) .sheet-lib > :not(.maxbtn):not(.toolsbtn) { display: none; }
+.sheet.max:not(.max-tools) .save-row,
+.sheet.max:not(.max-tools) .midi-search,
+.sheet.max:not(.max-tools) .midi-results { display: none; }
+/* Barre de lecture réduite à l'essentiel quand le tiroir est fermé */
+.sheet.max:not(.max-tools) #recBtn,
+.sheet.max:not(.max-tools) #shareBtn,
+.sheet.max:not(.max-tools) .dock { display: none; }
 .sheet-lib select {
   min-height: 38px;
   padding: 6px 10px;
