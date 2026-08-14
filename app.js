@@ -988,11 +988,12 @@ sheetStop.addEventListener('click', () => { stopAuto(false); stopSheet(false); }
 
 /* ---------- Bibliothèque de partitions ---------- */
 const libSelect = document.getElementById('libSelect');
-const libPlay = document.getElementById('libPlay');
 const libSave = document.getElementById('libSave');
 const libDelete = document.getElementById('libDelete');
 const libExport = document.getElementById('libExport');
 const libImport = document.getElementById('libImport');
+const libMore = document.getElementById('libMore');
+const libMoreMenu = document.getElementById('libMoreMenu');
 const libFile = document.getElementById('libFile');
 const LIB_KEY = 'piano.library';
 
@@ -1058,12 +1059,6 @@ libSelect.addEventListener('change', () => {
     const lib = loadLib();
     if (lib[v] !== undefined) sheetInput.value = lib[v]; // n'interrompt pas la lecture
   }
-});
-
-/* Bouton play : lit la partition chargée (lecture auto). */
-libPlay.addEventListener('click', () => {
-  if (sheetInput.value.trim()) startAuto();
-  else sheetProgress.textContent = 'Choisissez une partition d’abord.';
 });
 
 /* Remet le titre de la bibliothèque à zéro dès que le contenu change autrement
@@ -1165,6 +1160,7 @@ libDelete.addEventListener('click', () => {
   saveLibData(lib);
   refreshLibSelect();
   disarmDelete();
+  closeLibMore();
   sheetProgress.textContent = 'Partition supprimée.';
 });
 libSelect.addEventListener('change', disarmDelete);
@@ -1175,8 +1171,27 @@ libExport.addEventListener('click', () => {
   a.download = 'piano-partitions.json';
   a.click();
   URL.revokeObjectURL(a.href);
+  closeLibMore();
 });
-libImport.addEventListener('click', () => libFile.click());
+libImport.addEventListener('click', () => { libFile.click(); closeLibMore(); });
+
+/* Menu « ⋯ » (actions secondaires : Supprimer / Exporter / Importer) —
+   désencombre la barre. Se ferme au clic extérieur ou après une action. */
+function closeLibMore() {
+  libMoreMenu.hidden = true;
+  libMore.setAttribute('aria-expanded', 'false');
+  disarmDelete(); // ne pas laisser « Confirmer ? » armé une fois le menu refermé
+}
+libMore.addEventListener('click', () => {
+  const open = libMoreMenu.hidden;
+  libMoreMenu.hidden = !open;
+  libMore.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('pointerdown', e => {
+  if (libMoreMenu.hidden) return;
+  if (e.target.closest('.lib-more-wrap')) return; // clic dans le menu ou sur ⋯
+  closeLibMore();
+});
 libFile.addEventListener('change', async () => {
   const file = libFile.files[0];
   libFile.value = '';
@@ -1876,7 +1891,7 @@ document.addEventListener('pointerdown', e => {
    reste entièrement dédié au piano (Espace = pédale, jamais un bouton). */
 [btnSustain, btnLabels, volumeEl, trDown, trUp, trVal, btnSheet,
  sheetStart, sheetStop, autoStart, autoPause, tempoEl, tempoDown, tempoUp,
- recBtn, shareBtn, libSave, libDelete, libExport, libImport, midiImport, midiSearchBtn, sheetMax, ...dockButtons].forEach(el =>
+ recBtn, shareBtn, libSave, libDelete, libExport, libImport, libMore, midiImport, midiSearchBtn, sheetMax, ...dockButtons].forEach(el =>
   el.addEventListener('pointerup', () => el.blur())
 );
 
