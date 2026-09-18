@@ -267,11 +267,15 @@
   <button class="ov-close" data-hide="keysSize" type="button" aria-label="Masquer les curseurs de taille" title="Masquer (revient au rechargement)">×</button>
   <label title="Largeur des touches">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
-    <input id="ksW" type="range" min="35" max="320" value="100" aria-label="Largeur des touches">
+    <button type="button" class="ks-step" data-ks="ksW" data-d="-15" aria-label="Réduire la largeur des touches">−</button>
+    <input id="ksW" type="range" min="35" max="320" step="5" value="100" aria-label="Largeur des touches">
+    <button type="button" class="ks-step" data-ks="ksW" data-d="15" aria-label="Augmenter la largeur des touches">+</button>
   </label>
   <label title="Hauteur des touches">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>
-    <input id="ksH" type="range" min="40" max="100" value="100" aria-label="Hauteur des touches">
+    <button type="button" class="ks-step" data-ks="ksH" data-d="-5" aria-label="Réduire la hauteur des touches">−</button>
+    <input id="ksH" type="range" min="40" max="100" step="5" value="100" aria-label="Hauteur des touches">
+    <button type="button" class="ks-step" data-ks="ksH" data-d="5" aria-label="Augmenter la hauteur des touches">+</button>
   </label>
 </div>
 

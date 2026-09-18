@@ -391,8 +391,15 @@ function keyFromPoint(x, y) {
 
 /* Tolérance tactile : distance (px) qu'un doigt doit parcourir avant qu'un
    glissement ne change de note. Un petit tremblement reste sur la même touche
-   (moins de fausses notes) ; un vrai glissando fonctionne toujours. */
-const TOUCH_TOL = () => (uiPrefs.touchTol ?? 16);
+   (moins de fausses notes) ; un vrai glissando fonctionne toujours.
+   La distance est PROPORTIONNELLE à la largeur effective des touches : ainsi
+   la sensation reste identique qu'on agrandisse ou réduise le clavier
+   (à 100 %, c'est la valeur du curseur en px). */
+function touchTolPx() {
+  const base = uiPrefs.touchTol ?? 16;
+  const scale = (typeof effectiveKeyW === 'function' ? effectiveKeyW() : 100) / 100;
+  return base * scale;
+}
 
 pianoEl.addEventListener('pointerdown', e => {
   e.preventDefault();
@@ -418,7 +425,8 @@ window.addEventListener('pointermove', e => {
   // zone morte : au tactile, on attend un déplacement franc avant de glisser
   if (st.touch && !st.sliding) {
     const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
-    if (dx * dx + dy * dy < TOUCH_TOL() * TOUCH_TOL()) return; // tremblement ignoré
+    const tol = touchTolPx();
+    if (dx * dx + dy * dy < tol * tol) return; // tremblement ignoré
     st.sliding = true;
   }
   const midi = keyFromPoint(e.clientX, e.clientY);
@@ -1805,6 +1813,17 @@ ksH.addEventListener('input', () => {
   saveUiPrefs();
   applyKeySize();
 });
+/* Boutons − / + des jauges : ajustement fin d'un cran (plus facile au doigt
+   qu'attraper le pouce du curseur). */
+document.querySelectorAll('.ks-step').forEach(b => {
+  b.addEventListener('click', () => {
+    const el = document.getElementById(b.dataset.ks);
+    const d = Number(b.dataset.d);
+    el.value = Math.min(Number(el.max), Math.max(Number(el.min), Number(el.value) + d));
+    el.dispatchEvent(new Event('input'));
+    b.blur();
+  });
+});
 applyUiPrefs();
 
 /* ---------- Mode touches seules + taille des touches ---------- */
@@ -1814,12 +1833,20 @@ optKeysOnly.addEventListener('change', () => {
   applyUiPrefs();
   updateFab();
   if (uiPrefs.keysOnly) { settingsPop.hidden = true; btnSettings.setAttribute('aria-expanded', 'false'); goHorizontalIfPortrait(); }
+  else exitKeysOnly();
 });
+/* Sortie propre de Pleine touche : quitte le plein écran natif s'il est actif
+   et rend la main à l'orientation physique (retour portrait immédiat). */
+function exitKeysOnly() {
+  if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (_) {} }
+  if (typeof resetOrientAuto === 'function') resetOrientAuto();
+}
 keysOnlyExit.addEventListener('click', () => {
   uiPrefs.keysOnly = false;
   saveUiPrefs();
   applyUiPrefs();
   updateFab();
+  exitKeysOnly();
 });
 /* Bouton flottant « Pleine touche » (mobile) : bascule en touches seules */
 document.getElementById('keysQuick').addEventListener('click', () => {
@@ -2260,6 +2287,17 @@ btnOrient.addEventListener('click', async () => {
   btnOrient.blur();
 });
 
+/* Rend la main à l'orientation physique (Auto) : déverrouille, retire la
+   rotation CSS, et surtout remet orientMode=0 pour que le handler resize ne
+   re-force plus le paysage. Appelé en sortie de plein écran / Pleine touche
+   → le retour en portrait redevient immédiat. */
+function resetOrientAuto() {
+  orientMode = 0;
+  if (typeof orientLabel !== 'undefined' && orientLabel) orientLabel.textContent = 'Auto';
+  try { screen.orientation.unlock(); } catch (_) {}
+  setCssLandscape(false);
+}
+
 /* Entrée en Pleine touche depuis le portrait : on force l'affichage horizontal
    (verrouillage natif, ou rotation CSS en secours) pour un vrai clavier large. */
 function goHorizontalIfPortrait() {
@@ -2285,7 +2323,9 @@ updateRotateHint();
 /* Plein écran natif (Android) : on marque le body pour afficher les curseurs
    de taille + recalculer l'ascenseur (sinon aucun contrôle en plein écran). */
 document.addEventListener('fullscreenchange', () => {
-  document.body.classList.toggle('fs-active', !!document.fullscreenElement);
+  const fs = !!document.fullscreenElement;
+  document.body.classList.toggle('fs-active', fs);
+  if (!fs) resetOrientAuto();   // sortie plein écran → on rend la main au portrait
   applyKeySize();               // largeur confortable en entrant en plein écran
   if (typeof updatePanBar === 'function') updatePanBar();
   updateFab();
