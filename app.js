@@ -2416,7 +2416,13 @@ navigator.storage?.persist?.().catch(() => {});
    au retour selon le réglage courant. La lecture Auto continue (scheduler + lookahead). */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) setReverb(0);
-  else setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
+  else {
+    setReverb(uiPrefs.light ? 0 : uiPrefs.reverb);
+    // Retour sur la page : on rend la main à l'orientation physique (Auto),
+    // sauf en Pleine touche / plein écran où l'horizontal est voulu.
+    const forced = document.body.classList.contains('keys-only') || document.fullscreenElement;
+    if (!forced && orientMode !== 0) resetOrientAuto();
+  }
 });
 
 /* Numéro de version (lu depuis le cache du service worker) dans les réglages */
