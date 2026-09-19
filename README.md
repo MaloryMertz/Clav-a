@@ -41,5 +41,9 @@ C'est un site 100 % statique, sans build ni dépendance : copiez le dossier tel 
 
 ## Licences
 
-- **Code** : [MIT](LICENSE) — © 2026 Malory M.
-- **Échantillons audio** (`samples/`) : [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) par Alexander Holm, licence **CC-BY 3.0** (attribution obligatoire), via tonejs.github.io.
+- **Code** : [PolyForm Noncommercial 1.0.0](LICENSE) — © 2026 Malory M.
+  Projet **libre d'usage, de modification et de partage à des fins non commerciales**,
+  avec **attribution obligatoire** (mention « Malory M. » conservée). L'usage commercial
+  n'est pas autorisé sans accord écrit de l'auteur.
+- **Échantillons audio** (`samples/`) : [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) par Alexander Holm, licence **CC-BY 3.0** (attribution obligatoire) — licence propre, non affectée par la clause non commerciale ci-dessus.
+- **Mapping clavier** : compatible avec la disposition de [virtualpiano.net](https://virtualpiano.net) (marque de leurs propriétaires respectifs ; aucune affiliation).
