@@ -1738,7 +1738,7 @@ const keysOnlyExit = document.getElementById('keysOnlyExit');
 const hintLine = document.getElementById('hintLine');
 const signatureEl = document.getElementById('signature');
 
-let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 26, instrument: 'piano' };
+let uiPrefs = { sheet: true, hint: true, sig: true, fx: true, cascade: true, light: false, reverb: 25, keysOnly: false, keySize: 100, keyH: 100, touchTol: 26, instrument: 'piano', keysSizeFold: false };
 try { Object.assign(uiPrefs, JSON.parse(localStorage.getItem('piano.ui') || '{}')); } catch (_) {}
 /* Migration unique : le panneau partition est désormais ouvert par défaut */
 if (!uiPrefs.sheetDefaultV2) { uiPrefs.sheet = true; uiPrefs.sheetDefaultV2 = true; }
@@ -1773,6 +1773,7 @@ function applyUiPrefs() {
   document.body.classList.toggle('keys-only', uiPrefs.keysOnly);
   keysOnlyExit.hidden = !uiPrefs.keysOnly;
   applyKeySize();
+  if (typeof applyKeysFold === 'function') applyKeysFold();
 }
 
 /* Taille des touches : largeur et hauteur indépendantes.
@@ -1781,6 +1782,21 @@ let panReady = false; // vrai une fois l'ascenseur du clavier initialisé
 let mmReady = false;  // vrai une fois le mini-piano initialisé
 const ksW = document.getElementById('ksW');
 const ksH = document.getElementById('ksH');
+const keysSizeEl = document.getElementById('keysSize');
+const ksFold = document.getElementById('ksFold');
+
+/* Repli / dépli des jauges de taille (mémorisé). Replié = petite pastille. */
+function applyKeysFold() {
+  keysSizeEl.classList.toggle('folded', !!uiPrefs.keysSizeFold);
+  ksFold.setAttribute('aria-expanded', String(!uiPrefs.keysSizeFold));
+  ksFold.title = uiPrefs.keysSizeFold ? 'Déplier les réglages de taille' : 'Replier les réglages de taille';
+}
+ksFold.addEventListener('click', () => {
+  uiPrefs.keysSizeFold = !uiPrefs.keysSizeFold;
+  saveUiPrefs();
+  applyKeysFold();
+  ksFold.blur();
+});
 
 /* Largeur effective : en plein écran / Pleine touche / paysage sur téléphone,
    des touches plus larges par défaut (100 % = trop fin) — tant que l'utilisateur

@@ -1081,6 +1081,30 @@ body.keys-only .mode-badge { display: none !important; }
 }
 .ks-step:active { transform: scale(.94); border-color: var(--accent-deep); }
 .ks-step:focus-visible { outline: none; box-shadow: var(--focus); }
+/* Repli / dépli des jauges (plein écran mobile) */
+.keys-size .ks-body { display: flex; flex-direction: column; gap: 6px; }
+.keys-size.folded .ks-body { display: none; }
+.ks-fold {
+  align-self: flex-end;
+  width: 34px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-dim); background: transparent;
+  border: 1px solid transparent; border-radius: 8px;
+  cursor: pointer; touch-action: manipulation;
+}
+.ks-fold:active { transform: scale(.94); }
+.ks-fold:focus-visible { outline: none; box-shadow: var(--focus); }
+.ks-fold svg { width: 18px; height: 18px; }
+.ks-fold .i-expand { display: none; }
+.keys-size.folded .ks-fold .i-fold { display: none; }
+.keys-size.folded .ks-fold .i-expand { display: inline; }
+/* Replié : l'overlay se réduit à une pastille tappable */
+.keys-size.folded { padding: 0; background: transparent; border-color: transparent; backdrop-filter: none; }
+.keys-size.folded .ks-fold {
+  width: 44px; height: 44px; color: var(--accent);
+  background: rgba(26, 29, 38, .9); border-color: var(--border);
+  backdrop-filter: blur(4px);
+}
 @media (pointer: coarse) {
   body.keys-only .keys-size { display: flex; } /* uniquement en Pleine touche */
   /* Pouce et piste tactiles (le pouce natif est trop petit à saisir au doigt) */
