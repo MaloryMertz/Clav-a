@@ -2,15 +2,15 @@
 
 /* =====================================================================
    Piano — Grand Piano virtuel
-   - Mapping clavier identique à virtualpiano.net (61 touches, C2 → C7)
+   - Mapping clavier par caractère tapé (61 touches, C2 → C7)
    - Son : Salamander Grand Piano (Yamaha C5), 21 samples, interpolation
      de pitch par playbackRate (1 sample tous les 3 demi-tons)
    ===================================================================== */
 
-/* ---------- Mapping virtualpiano.net ----------
+/* ---------- Mapping clavier (par caractère) ----------
    Index i = midi 36+i (C2..C7). Minuscules/chiffres = touches blanches,
    majuscules et symboles (Shift+chiffre) = dièses.
-   Le mapping se fait par CARACTÈRE tapé (e.key), comme sur virtualpiano.net :
+   Le mapping se fait par CARACTÈRE tapé (e.key) :
    la touche qui écrit « w » joue le w, sur QWERTY comme sur AZERTY.
    Le pavé numérique produit les caractères 1..0, donc il marche aussi. */
 const VP_MAP = "1!2@34$5%6^78*9(0qQwWeErtTyYuiIoOpPasSdDfgGhHjJklLzZxcCvVbBnm";
@@ -152,7 +152,7 @@ function warmUpAudio() {
   window.addEventListener(ev, warmUpAudio, { capture: true, passive: true })
 );
 
-let transpose = 0; // demi-tons, -12..+12 (comme virtualpiano.net)
+let transpose = 0; // demi-tons, -12..+12
 
 /* ---------- Instruments ---------- */
 let instrument = 'piano'; // 'piano' (échantillons) | 'epiano' | 'harpsi' | 'organ' (synthèse)
@@ -490,7 +490,7 @@ volumeEl.addEventListener('input', () => {
   masterGain.gain.setTargetAtTime(volumeEl.value / 100, ctx.currentTime, 0.02);
 });
 
-/* ---------- Transposition (±12 demi-tons, comme virtualpiano.net) ---------- */
+/* ---------- Transposition (±12 demi-tons) ---------- */
 const trDown = document.getElementById('trDown');
 const trUp = document.getElementById('trUp');
 const trVal = document.getElementById('trVal');
@@ -507,7 +507,7 @@ trDown.addEventListener('click', () => setTranspose(transpose - 1));
 trUp.addEventListener('click', () => setTranspose(transpose + 1));
 trVal.addEventListener('click', () => setTranspose(0));
 
-/* ---------- Partition Virtual Piano (Key Assist) ---------- */
+/* ---------- Partition par lettres (Key Assist) ---------- */
 const btnSheet = document.getElementById('btnSheet');
 const sheetPanel = document.getElementById('sheetPanel');
 const sheetInput = document.getElementById('sheetInput');
@@ -671,7 +671,7 @@ function applySheetTempo(text) {
       updateTempoVal();
     }
   }
-  // transposition (fiche virtualpiano.net) : {transpose 2} / {transposition -3}
+  // transposition : {transpose 2} / {transposition -3}
   const t = text.match(/\{\s*(?:transpose|transposition)\s*:?\s*(-?\d+)\s*\}/i);
   if (t) setTranspose(parseInt(t[1], 10));
 }

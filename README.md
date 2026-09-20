@@ -1,11 +1,11 @@
 # Clavéa — Grand Piano Virtuel
 
-Piano virtuel 61 touches (C2 → C7) dans le navigateur, avec le **mapping clavier de virtualpiano.net** et le son du **Salamander Grand Piano** (Yamaha C5 échantillonné, licence CC-BY).
+Piano virtuel 61 touches (C2 → C7) dans le navigateur, avec un **mapping clavier par caractère tapé** et le son du **Salamander Grand Piano** (Yamaha C5 échantillonné, licence CC-BY).
 
 ## Fonctionnalités
 
-- **Mapping virtualpiano.net** : rangée `1`–`0` puis `q`…`m`, `Maj` pour les dièses.
-  Le mapping se fait par **caractère tapé** (comme sur virtualpiano.net) : la touche qui écrit `w` joue le `w`, sur QWERTY comme sur AZERTY. Le pavé numérique fonctionne aussi.
+- **Mapping par lettres** : rangée `1`–`0` puis `q`…`m`, `Maj` pour les dièses.
+  Le mapping se fait par **caractère tapé** : la touche qui écrit `w` joue le `w`, sur QWERTY comme sur AZERTY. Le pavé numérique fonctionne aussi.
 - **Son haute qualité** : 21 samples du Salamander Grand Piano (un tous les 3 demi-tons), interpolation de pitch inaudible, compresseur léger pour éviter la saturation en accords.
 - **Pédale de sustain** : `Espace` (maintien) ou bouton Sustain (verrou). Compatible pédale MIDI (CC64).
 - **Web MIDI** : branchez un clavier maître, il est détecté automatiquement (badge MIDI).
@@ -46,4 +46,4 @@ C'est un site 100 % statique, sans build ni dépendance : copiez le dossier tel 
   avec **attribution obligatoire** (mention « Malory M. » conservée). L'usage commercial
   n'est pas autorisé sans accord écrit de l'auteur.
 - **Échantillons audio** (`samples/`) : [Salamander Grand Piano](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) par Alexander Holm, licence **CC-BY 3.0** (attribution obligatoire) — licence propre, non affectée par la clause non commerciale ci-dessus.
-- **Mapping clavier** : compatible avec la disposition de [virtualpiano.net](https://virtualpiano.net) (marque de leurs propriétaires respectifs ; aucune affiliation).
+- **Mapping clavier** : disposition par lettres (caractère tapé), indépendante de la marque du clavier.

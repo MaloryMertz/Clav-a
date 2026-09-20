@@ -5,7 +5,7 @@ bibliothèque de l'app (section « Dossier en ligne »), sans toucher au code.
 
 ## Formats acceptés
 
-- **`Mon Morceau.txt`** — le contenu est la partition (notation Virtual Piano),
+- **`Mon Morceau.txt`** — le contenu est la partition (notation par lettres),
   le nom du fichier (sans extension) devient le nom du morceau.
 - **`pack.json`** — plusieurs morceaux d'un coup :
   ```json
