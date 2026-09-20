@@ -3,7 +3,7 @@
 /* =====================================================================
    Piano — Grand Piano virtuel
    - Mapping clavier par caractère tapé (61 touches, C2 → C7)
-   - Son : Salamander Grand Piano (Yamaha C5), 21 samples, interpolation
+   - Son : Salamander Grand Piano (Yamaha C5), 29 samples, interpolation
      de pitch par playbackRate (1 sample tous les 3 demi-tons)
    ===================================================================== */
 
@@ -545,8 +545,10 @@ function parseSheet(text) {
 }
 
 /* Comme parseSheet mais renvoie la plage de caractères de chaque pas (note ou
-   accord) — 1:1 avec parseSheet et avec autoTimeline. Sert à l'onglet « suivi »
-   pour surligner la note courante sans re-parser (pas besoin de vpCharToMidi côté onglet). */
+   accord) — 1:1 avec parseSheet uniquement (silences et directives ignorés).
+   ⚠️ PAS 1:1 avec autoTimeline, qui conserve un pas par silence (espace) : en
+   lecture Auto, diffuser l'index du pas NOTE (autoNoteIdx), pas visualBeat.
+   Sert à l'onglet « suivi » pour surligner la note courante sans re-parser. */
 function parseSheetTokens(text) {
   const toks = [];
   let i = 0;
@@ -700,9 +702,10 @@ function setPauseUi(paused) {
   autoPauseIcon.setAttribute('d', paused ? 'M8 5v14l11-7z' : 'M7 5h4v14H7zM13 5h4v14h-4z');
 }
 
-/* Comme parseSheet, mais conserve les silences (espace / retour ligne = un temps)
-   et les directives de vitesse : {x2} = 2× plus vite, {x0.5} = 2× plus lent,
-   {x1} = retour au tempo du curseur. */
+/* Comme parseSheet, mais conserve les silences (un espace = un pas de silence).
+   Le retour à la ligne, lui, ne produit aucun pas : mise en page uniquement.
+   Gère aussi les directives de vitesse : {x2} = 2× plus vite, {x0.5} = 2× plus
+   lent, {x1} = retour au tempo du curseur. */
 function parseSheetTimed(text) {
   const steps = [];
   let i = 0;
@@ -727,7 +730,7 @@ function parseSheetTimed(text) {
       i = end === -1 ? text.length : end + 1;
     } else {
       if (vpCharToMidi[c] !== undefined) steps.push({ notes: [vpCharToMidi[c]] });
-      else if (c === ' ') steps.push({ rest: true }); // retour à la ligne = simple mise en page
+      else if (c === ' ') steps.push({ rest: true }); // espace = 1 pas de silence (\n et autres caractères hors table : ignorés)
       i++;
     }
   }
@@ -817,6 +820,8 @@ let autoTimeline = [];
 let beatTimes = [];             // beatTimes[k] = temps audio (s) où le pas k sonne
 let schedBeat = 0;              // prochain pas à programmer (audio)
 let visualBeat = 0;             // prochain pas déclenché visuellement
+let autoNoteIdx = 0;            // index du pas NOTE courant (silences exclus) — pour l'onglet « suivi »
+let autoNoteTotal = 0;          // nb de pas porteurs de notes (= parseSheetTokens(...).length)
 let autoHead = 0;               // position fractionnaire en pas (cascade)
 let autoRaf = null;
 let autoSchedTimer = null;
@@ -907,7 +912,10 @@ function autoVisualFrame() {
       setTimeout(() => notes.forEach(m => setKeyDown(m, false)), autoStepDur(visualBeat) * 900);
       sheetProgress.textContent = `auto ${Math.min(autoPlayed, autoPlayable)} / ${autoPlayable}`
         + (ev.mul !== 1 ? ` ×${ev.mul}` : '');
-      broadcastPos(visualBeat, autoTimeline.length, true, 'auto'); // onglet « suivi »
+      // L'onglet « suivi » indexe les jetons de parseSheetTokens (silences exclus) :
+      // on diffuse l'index du pas NOTE, pas visualBeat (qui compte aussi les silences).
+      broadcastPos(autoNoteIdx, autoNoteTotal, true, 'auto');
+      autoNoteIdx++;
     }
     visualBeat++;
   }
@@ -950,6 +958,8 @@ function startAuto() {
     return;
   }
   autoPlayable = autoTimeline.length;
+  autoNoteTotal = autoTimeline.filter(s => s.notes).length; // = nb de jetons côté onglet suivi
+  autoNoteIdx = 0;
   autoPlayed = 0;
   schedBeat = 0;
   visualBeat = 0;

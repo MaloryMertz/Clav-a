@@ -6,7 +6,7 @@ Piano virtuel 61 touches (C2 → C7) dans le navigateur, avec un **mapping clavi
 
 - **Mapping par lettres** : rangée `1`–`0` puis `q`…`m`, `Maj` pour les dièses.
   Le mapping se fait par **caractère tapé** : la touche qui écrit `w` joue le `w`, sur QWERTY comme sur AZERTY. Le pavé numérique fonctionne aussi.
-- **Son haute qualité** : 21 samples du Salamander Grand Piano (un tous les 3 demi-tons), interpolation de pitch inaudible, compresseur léger pour éviter la saturation en accords.
+- **Son haute qualité** : 29 samples du Salamander Grand Piano (un tous les 3 demi-tons), interpolation de pitch inaudible, compresseur léger pour éviter la saturation en accords.
 - **Pédale de sustain** : `Espace` (maintien) ou bouton Sustain (verrou). Compatible pédale MIDI (CC64).
 - **Web MIDI** : branchez un clavier maître, il est détecté automatiquement (badge MIDI).
 - **Souris / tactile** : clic ou toucher multi-doigts, glissando en glissant sur les touches, vélocité selon la hauteur du clic sur la touche.
